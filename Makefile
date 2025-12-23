@@ -6,6 +6,7 @@ BUILD_DIR = html
 
 # Generate HTML documentation
 docs:
+	python3 utils/libdoc2rst.py
 	sphinx-build -b html $(DOCS_DIR) $(BUILD_DIR)
 	@echo "Documentation built in $(BUILD_DIR)"
 

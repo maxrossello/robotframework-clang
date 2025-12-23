@@ -8,20 +8,63 @@ import subprocess
 from jupyter_client import KernelManager
 
 class clang:
+    """
+    Robot Framework library for interactive C++ execution using **Clang-REPL** (via xeus-cpp).
+
+    This library allows you to write, execute, and test C++ code snippets directly within Robot Framework test suites.
+    It relies on a Jupyter kernel (specifically ``xeus-cpp``) to maintain a persistent C++ interpreter session.
+
+    **Key Features:**
+    
+    - **JIT Compilation**: No need to create a `main.cpp` or compile a binary.
+    - **State Persistence**: Variables defined in one test case (within the same suite/session) are available in subsequent ones.
+    - **Modern C++**: Supports C++20 and potentially C++ modules (depending on the Clang version installed).
+
+    **Basic Usage Example:**
+
+    .. code-block:: robotframework
+
+        *** Settings ***
+        Library    clang
+
+        *** Test Cases ***
+        Example Test
+            Start Kernel
+            Source Exec    int answer = 42;
+            ${result}=     Source Exec    std::cout << answer;
+            Should Be Equal    ${result}    42
+            Shutdown Kernel
+    """
+    
     ROBOT_LIBRARY_SCOPE = 'GLOBAL'
 
     def __init__(self):
         """
-        Initializes the Clang-REPL library. 
-        The kernel is NOT started automatically. Call 'Start Kernel' to begin.
+        Initializes the library instance. 
+        
+        Note: This does **not** start the C++ kernel. You must call `Start Kernel` explicitly.
         """
         self.km = None
         self.kc = None
 
     def start_kernel(self, kernel_name='xcpp20'):
         """
-        Starts the Clang-REPL kernel (Xeus-cpp).
-        This provides an isolated C++ environment.
+        Starts the Clang-REPL kernel (Xeus-cpp) in a subprocess.
+
+        This keyword must be called before executing any C++ code. It initializes the 
+        standard library and prepares the environment.
+
+        **Arguments:**
+
+        - ``kernel_name``: The name of the Jupyter kernel to use. Defaults to ``xcpp20``. 
+          Ensure this kernel is installed in your environment (``jupyter kernelspec list``).
+
+        The initialization process also defines a helper function ``_robot_demangle`` 
+        to assist with type introspection.
+
+        **Example:**
+
+        | Start Kernel | kernel_name=xcpp17 |
         """
         if self.km:
             self.shutdown_kernel()
@@ -36,7 +79,7 @@ class clang:
             self.shutdown_kernel()
             raise RuntimeError("C++ Kernel failed to start. Check your mamba environment.")
 
-        # Force libc++ to ensure isolation from system GCC 13/15
+        # Force libc++ to ensure isolation from system GCC
         self.source_exec('%config Interpreter.flags = ["-stdlib=libc++"]')
         self.source_exec('#include <iostream>')
         self.source_exec('#include <stdexcept>')
@@ -58,6 +101,11 @@ class clang:
         """)
 
     def shutdown_kernel(self):
+        """
+        Stops the running C++ kernel and cleans up resources.
+
+        It is recommended to use this in the ``Test Teardown`` or ``Suite Teardown``.
+        """
         if self.kc:
             self.kc.stop_channels()
             self.kc = None
@@ -66,21 +114,67 @@ class clang:
             self.km = None
 
     def add_include_path(self, *paths):
+        """
+        Adds directories to the C++ include search path (equivalent to ``-I`` flag).
+
+        **Arguments:**
+
+        - ``paths``: One or more directory paths to add.
+
+        **Example:**
+
+        | Add Include Path | /opt/mylib/include | ${CURDIR}/../include |
+        """
         for p in paths:
             self.source_exec(f'%config Interpreter.flags += ["-I{p}"]')
 
     def source_include(self, *files):
+        """
+        Includes header files in the current session.
+
+        **Arguments:**
+
+        - ``files``: Names of the header files to include (e.g., ``vector``, ``myheader.h``).
+
+        **Example:**
+
+        | Source Include | vector | map |
+        """
         for f in files:
             self.source_exec(f'#include "{f}"')
 
     def source_parse(self, *parts):
-        """Defines C++ code (classes, functions) in the JIT session."""
+        """
+        Defines C++ code structure (declarations) without expecting output.
+        
+        Useful for defining classes, functions, or globals.
+        Alias for `Source Exec`.
+
+        **Arguments:**
+
+        - ``parts``: Lines of C++ code.
+        """
         self.source_exec("\n".join(parts))
 
     def source_exec(self, *parts):
         """
-        Executes C++ code and captures output. 
-        Equivalent to source_exec_and_return_output.
+        Executes C++ code and returns the standard output.
+
+        This is the primary keyword for interacting with the REPL. 
+        If the C++ code prints to ``std::cout``, that output is captured and returned.
+        If the code throws an exception or fails to compile, the test fails.
+
+        **Arguments:**
+
+        - ``parts``: One or more strings constituting the C++ code to run.
+
+        **Returns:**
+
+        - The captured ``stdout`` as a string, stripped of trailing whitespace.
+
+        **Example:**
+
+        | ${out}= | Source Exec | std::cout << "Hello"; |
         """
         source = "\n".join(parts)
         msg_id = self.kc.execute(source)
@@ -115,16 +209,40 @@ class clang:
         return "".join(output).strip()
 
     def source_exec_and_return_output(self, *parts):
-        """Legacy compatibility method."""
+        """
+        Legacy alias for `Source Exec`.
+        """
         return self.source_exec(*parts)
 
     def load_shared_library(self, *libraries):
+        """
+        Loads a shared object (.so) or dynamic library (.dylib/dll) into the process.
+
+        **Arguments:**
+
+        - ``libraries``: Paths or names of libraries to load.
+
+        **Example:**
+
+        | Load Shared Library | /usr/lib/libm.so |
+        """
         for library in libraries:
             self.source_exec(f'%load_library {library}')
 
     def assert_(self, cond, otherwise=None):
         """
-        Executes an assertion in the C++ kernel.
+        Evaluates a C++ boolean condition and fails the test if it is false.
+
+        **Arguments:**
+
+        - ``cond``: A string containing a C++ expression that evaluates to ``bool``.
+        - ``otherwise``: Optional message or value to print/include in the error if the assertion fails.
+
+        **Example:**
+
+        | Source Exec | int x = 5; |
+        | Assert | x > 0 | Context: x should be positive |
+        | Assert | x == 5 |
         """
         # Inclusion of exception is implicit in many modern environments, 
         # but we can add it if needed.
@@ -140,23 +258,71 @@ class clang:
             raise AssertionError(f"C++ Assertion Failed: {cond}") from e
 
     def get_value(self, obj_expression):
-        """Prints a C++ value to stdout to return it to Robot."""
+        """
+        Retrieves the string representation of a C++ expression/variable.
+
+        Basically executes ``std::cout << (expression)`` and returns the result.
+
+        **Arguments:**
+
+        - ``obj_expression``: The C++ variable or expression to evaluate.
+
+        **Example:**
+
+        | Source Exec | int x = 100; |
+        | ${val}= | Get Value | x * 2 |
+        | Should Be Equal | ${val} | 200 |
+        """
         return self.source_exec(f"std::cout << ({obj_expression});")
 
     def call_function(self, func, *params):
-        """Calls a C++ function and captures its output."""
+        """
+        Calls a global C++ function with the provided arguments and returns its output.
+
+        **Arguments:**
+
+        - ``func``: Name of the function to call.
+        - ``params``: Arguments to pass to the function.
+
+        **Example:**
+
+        | Source Exec | int add(int a, int b) {{ return a + b; }} |
+        | ${res}= | Call Function | add | 2 | 3 |
+        """
         params_str = ", ".join(map(str, params))
         return self.source_exec(f"std::cout << {func}({params_str});")
 
     def typeid(self, expression):
-        """Returns the mangled C++ type name of the expression."""
+        """
+        Returns the **mangled** C++ type name of an expression (using ``typeid(...).name()``).
+
+        **Arguments:**
+
+        - ``expression``: The object or type to inspect.
+        """
         return self.source_exec(f'std::cout << typeid({expression}).name();')
 
     def typename(self, expression):
-        """Returns the demangled (human-readable) C++ type name of the expression."""
+        """
+        Returns the **demangled** (human-readable) C++ type name of an expression.
+
+        Uses ``abi::__cxa_demangle`` internally.
+
+        **Arguments:**
+
+        - ``expression``: The object or type to inspect.
+
+        **Example:**
+
+        | ${name}= | Typename | std::string("foo") |
+        | Should Contain | ${name} | string |
+        """
         return self.source_exec(f'std::cout << _robot_demangle(typeid({expression}).name());')
 
     def nullptr(self):
-        """Returns the string representation of nullptr for C++ snippets."""
+        """
+        Returns the string ``nullptr``. 
+        
+        Helper to represent the null pointer in keyword arguments.
+        """
         return "nullptr"
-

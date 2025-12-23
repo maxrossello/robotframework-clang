@@ -1,0 +1,5 @@
+graft tests
+graft recipe
+include README.md
+include pyproject.toml
+global-exclude *.py[cod]

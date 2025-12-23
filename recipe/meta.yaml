@@ -26,17 +26,19 @@ requirements:
     - python >=3.12
     - robotframework
     - jupyter_client
+    - docutils
     # C++ dependencies
     - xeus-cpp >={{ xeus_cpp_version }}
     - clang >={{ clang_major_version }},<{{ clang_major_version|int + 1 }}.0a0
 
 test:
   source_files:
-    - tests
+    - docs
   requires:
     - robotframework
+    - docutils
   commands:
-    - robot tests
+    - robot --extension rst docs/tests.rst
 
 about:
   home: https://github.com/tuo-user/robotframework-clang

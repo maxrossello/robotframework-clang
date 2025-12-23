@@ -1,0 +1,58 @@
+/* Custom styles for Robot Framework blocks */
+
+.highlight-robotframework {
+    margin-bottom: 24px;
+    border: 1px solid #e1e4e5;
+    border-radius: 4px;
+}
+
+.robot-toggle-header {
+    background-color: #f3f6f6;
+    padding: 8px 12px;
+    cursor: pointer;
+    font-weight: bold;
+    font-family: Lato, proxima-nova, Helvetica Neue, Arial, sans-serif;
+    color: #404040;
+    border-bottom: 1px solid #e1e4e5;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    user-select: none;
+}
+
+.robot-toggle-header:hover {
+    background-color: #edf0f2;
+}
+
+.robot-toggle-header::before {
+    content: "Test Source";
+}
+
+.robot-toggle-header::after {
+    content: "▼";
+    font-size: 0.8em;
+    transition: transform 0.3s;
+}
+
+.highlight-robotframework.collapsed .robot-toggle-header {
+    border-bottom: none;
+}
+
+.highlight-robotframework.collapsed .robot-toggle-header::after {
+    transform: rotate(-90deg);
+}
+
+.highlight-robotframework .highlight {
+    transition: max-height 0.3s ease-out;
+    overflow: hidden;
+}
+
+.highlight-robotframework.collapsed .highlight {
+    display: none;
+}
+
+/* Fix for Sphinx RTD theme code block margins */
+.highlight-robotframework pre {
+    margin-bottom: 0;
+    border: none;
+}

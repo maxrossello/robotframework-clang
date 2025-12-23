@@ -40,6 +40,32 @@ If you already have an environment with `xeus-cpp` installed and configured:
 pip install robotframework-clang
 ```
 
+## Documentation and Testing
+
+This project uses an "executable documentation" approach. Tests are written in reStructuredText format within the `docs/` folder, serving as both usage examples and the actual test suite.
+
+### Running Tests
+
+To execute the tests (which are embedded in the documentation):
+
+```bash
+make tests
+```
+
+### Building Documentation
+
+To generate the HTML documentation (requires Sphinx and sphinx-rtd-theme):
+
+```bash
+# Install documentation requirements
+pip install .[docs]
+
+# Build the docs
+make docs
+```
+
+The output will be available in `docs/_build/html/index.html`.
+
 ## License
 
-This project is distributed under the **Apache License 2.0**. See the [LICENSE](LICENSE) file for details.
+This project is distributed under the **Apache License 2.0**. See the [LICENSE](LICENSE.md) file for details.

@@ -7,7 +7,10 @@ sys.path.insert(0, os.path.abspath('../src'))
 project = 'robotframework-clang'
 copyright = '2025- Massimo Rossello'
 author = 'Massimo Rossello'
+# The full version, including alpha/beta/rc tags
 release = '0.1.0'
+# The short X.Y version
+version = '0.1.0'
 root_doc = 'index'
 
 templates_path = ['_templates']
@@ -42,13 +45,18 @@ html_theme_options = {
     'prev_next_buttons_location': 'bottom',
     'style_external_links': False,
     'vcs_pageview_mode': '',
-    'style_nav_header_background': 'white',
     'collapse_navigation': False,
     'sticky_navigation': True,
     'navigation_depth': 4,
     'includehidden': True,
     'titles_only': False
 }
+
+# Pass display_version directly to the template context
+html_context = {
+    'display_version': True,
+}
+
 html_css_files = ['sphinx_display.css']
 html_js_files = ['sphinx_display.js']
 

@@ -1,0 +1,22 @@
+{% extends "!layout.html" %}
+
+{% block sidebartitle %}
+  <div class="wy-side-nav-search">
+    {% if logo %}
+      <a href="{{ pathto(master_doc) }}">
+        <img src="{{ pathto('_static/' + logo, 1) }}" class="logo" alt="Logo"/>
+      </a>
+    {% else %}
+      <a href="{{ pathto(master_doc) }}" class="icon icon-home"> {{ project }}
+    {% endif %}
+
+    {% if display_version %}
+      <div class="version">
+        {{ version }}
+      </div>
+    {% endif %}
+    </a>
+
+    {% include "searchbox.html" %}
+  </div>
+{% endblock %}

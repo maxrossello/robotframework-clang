@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-22.04
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup Mamba Environment
+      uses: mamba-org/setup-micromamba@v1
+      with:
+        environment-name: ci-env
+        create-args: >-
+          python=3.12
+          robotframework
+          jupyter_client
+          docutils
+          xeus-cpp=0.8.0
+          clang=20
+          sphinx
+          sphinx_rtd_theme
+          myst-parser
+        condarc: |
+          channels:
+            - conda-forge
+
+    - name: Install Library
+      shell: bash -l {0}
+      run: pip install .
+
+    - name: Run Tests
+      shell: bash -l {0}
+      run: make tests
+
+    - name: Build Documentation
+      shell: bash -l {0}
+      run: make docs

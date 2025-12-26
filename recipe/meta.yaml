@@ -41,6 +41,6 @@ test:
     - robot --extension rst docs/tests.rst
 
 about:
-  home: https://github.com/tuo-user/robotframework-clang
+  home: https://github.com/maxrossello/robotframework-clang
   license: Apache-2.0
   summary: 'Robot Framework library for Clang/C++ interaction via Xeus'

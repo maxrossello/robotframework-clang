@@ -1,5 +1,9 @@
 # Robot Framework Clang Library
 
+[![CI](https://github.com/maxrossello/robotframework-clang/actions/workflows/ci.yml/badge.svg)](https://github.com/maxrossello/robotframework-clang/actions/workflows/ci.yml)
+[![Documentation Status](https://readthedocs.org/projects/robotframework-clang/badge/?version=latest)](https://robotframework-clang.readthedocs.io/en/latest/?badge=latest)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+
 `robotframework-clang` is a Robot Framework library designed to execute and test C++ code interactively using **Clang-REPL** (via the [xeus-cpp](https://github.com/jupyter-xeus/xeus-cpp) extension).
 
 ## Goals

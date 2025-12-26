@@ -56,4 +56,5 @@ cover/
 *.swp
 *~
 .project
+.pydevproject
 html/

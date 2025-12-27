@@ -28,7 +28,8 @@ class clang:
     
     - **JIT Compilation**: No need to create a `main.cpp` or compile a binary.
     - **State Persistence**: Variables defined in one test case (within the same suite/session) are available in subsequent ones.
-    - **Modern C++**: Supports C++20 and potentially C++ modules (depending on the Clang version installed).
+    - **Modern C++**: Supports C++20 and potentially C++ modules.
+    - **Libc++ Support**: Configured to use LLVM's libc++ by default.
 
     **Basic Usage Example:**
 
@@ -56,6 +57,7 @@ class clang:
         """
         self.km = None
         self.kc = None
+        self.includes = []
 
     def start_kernel(self, kernel_name='xcpp20'):
         """
@@ -71,26 +73,38 @@ class clang:
 
         The initialization process also defines a helper function ``_robot_demangle`` 
         to assist with type introspection.
+        
+        It configures the kernel to use ``libc++``.
 
         **Example:**
 
         | Start Kernel | kernel_name=xcpp17 |
         """
         if self.km:
-            self.shutdown_kernel()
+            self._stop_kernel()
 
         self.km = KernelManager(kernel_name=kernel_name)
         self.km.start_kernel(stderr=subprocess.DEVNULL)
+        
         self.kc = self.km.client()
         self.kc.start_channels()
         try:
             self.kc.wait_for_ready(timeout=10)
         except RuntimeError:
-            self.shutdown_kernel()
+            self._stop_kernel()
             raise RuntimeError("C++ Kernel failed to start. Check your mamba environment.")
 
-        # Force libc++ to ensure isolation from system GCC
-        self.source_exec('%config Interpreter.flags = ["-stdlib=libc++"]')
+        # Configure kernel via magics
+        try:
+            self.source_exec('%config Interpreter.flags += ["-stdlib=libc++"]')
+            # Try adding include paths via magic as well, for compiler-level resolution
+            for p in self.includes:
+                self.source_exec(f'%config Interpreter.flags += ["-I{p}"]')
+        except Exception as e:
+            self._stop_kernel()
+            raise RuntimeError(f"Failed to configure kernel: {e}")
+
+        # Standard headers
         self.source_exec('#include <iostream>')
         self.source_exec('#include <stdexcept>')
         self.source_exec('#include <typeinfo>')
@@ -110,12 +124,8 @@ class clang:
         }
         """)
 
-    def shutdown_kernel(self):
-        """
-        Stops the running C++ kernel and cleans up resources.
-
-        It is recommended to use this in the ``Test Teardown`` or ``Suite Teardown``.
-        """
+    def _stop_kernel(self):
+        """Internal helper to stop the kernel process without clearing config."""
         if self.kc:
             self.kc.stop_channels()
             self.kc = None
@@ -123,9 +133,21 @@ class clang:
             self.km.shutdown_kernel()
             self.km = None
 
+    def shutdown_kernel(self):
+        """
+        Stops the running C++ kernel and cleans up resources.
+
+        This also clears the accumulated include paths.
+        """
+        self._stop_kernel()
+        self.includes = []
+
     def add_include_path(self, *paths):
         """
         Adds directories to the C++ include search path (equivalent to ``-I`` flag).
+        
+        Paths added here are used by `Start Kernel` (at startup) and `Source Include` 
+        (to resolve header files).
 
         **Arguments:**
 
@@ -136,11 +158,17 @@ class clang:
         | Add Include Path | /opt/mylib/include | ${CURDIR}/../include |
         """
         for p in paths:
-            self.source_exec(f'%config Interpreter.flags += ["-I{p}"]')
+            abs_p = os.path.abspath(p)
+            if abs_p not in self.includes:
+                self.includes.append(abs_p)
 
     def source_include(self, *files):
         """
         Includes header files in the current session.
+
+        This keyword attempts to resolve the provided file names. If a file is not
+        found in the current directory, it searches through the paths added via
+        `Add Include Path` and uses an absolute path if a match is found.
 
         **Arguments:**
 
@@ -151,7 +179,18 @@ class clang:
         | Source Include | vector | map |
         """
         for f in files:
-            self.source_exec(f'#include "{f}"')
+            target = f
+            # If not an absolute path and file doesn't exist locally, 
+            # resolve it using registered include paths
+            if not os.path.isabs(f) and not os.path.exists(f):
+                for p in self.includes:
+                    full_path = os.path.join(p, f)
+                    if os.path.exists(full_path):
+                        target = full_path
+                        print(f"*INFO* Resolved {f} to {target}")
+                        break
+            
+            self.source_exec(f'#include "{target}"')
 
     def source_parse(self, *parts):
         """
@@ -187,6 +226,9 @@ class clang:
         | ${out}= | Source Exec | std::cout << "Hello"; |
         """
         source = "\n".join(parts)
+        if not self.kc:
+            raise RuntimeError("Kernel client not initialized. Did you call 'Start Kernel'?")
+
         msg_id = self.kc.execute(source)
         
         output = []

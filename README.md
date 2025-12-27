@@ -24,6 +24,7 @@ This approach is preferred over `cppyy` + `cling` for several key reasons:
 - Python 3.8+
 - **xeus-cpp 0.8.0**
 - **Clang 20** (Note: Clang 21 is currently not supported by xeus-cpp 0.8.0)
+- **libcxx** (LLVM C++ standard library)
 - A working C++ kernel (e.g., `xcpp20`).
 
 ## Installation

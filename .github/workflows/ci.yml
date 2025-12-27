@@ -23,6 +23,7 @@ jobs:
           docutils
           xeus-cpp=0.8.0
           clang=20
+          libcxx
           sphinx
           sphinx_rtd_theme
           myst-parser

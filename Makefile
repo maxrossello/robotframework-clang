@@ -12,11 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-.PHONY: docs tests clean
+.PHONY: docs tests clean install refresh
 
 # Variables
 DOCS_DIR = docs
 BUILD_DIR = html
+
+# Install the package in editable mode
+install:
+	pip install -e .
+
+# Alias for reinstalling/refreshing the editable install if needed
+refresh:
+	pip install -e .
 
 # Generate HTML documentation
 docs:
@@ -26,9 +34,11 @@ docs:
 
 # Run tests (using the .rst file as source)
 tests:
-	robot --extension rst $(DOCS_DIR)/tests.rst
+	robot --extension rst $(TESTOPTS) $(DOCS_DIR)
 
 # Clean build artifacts
 clean:
 	rm -rf $(BUILD_DIR) docs/_build
 	rm -rf output.xml log.html report.html
+	rm -rf src/*.egg-info
+	find . -name "__pycache__" -type d -exec rm -rf {} +

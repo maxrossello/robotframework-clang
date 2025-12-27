@@ -30,6 +30,7 @@ requirements:
     # C++ dependencies
     - xeus-cpp >={{ xeus_cpp_version }}
     - clang >={{ clang_major_version }},<{{ clang_major_version|int + 1 }}.0a0
+    - libcxx
 
 test:
   source_files:

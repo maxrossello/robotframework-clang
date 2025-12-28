@@ -12,7 +12,8 @@ It relies on a Jupyter kernel (specifically ``xeus-cpp``) to maintain a persiste
 
 - **JIT Compilation**: No need to create a `main.cpp` or compile a binary.
 - **State Persistence**: Variables defined in one test case (within the same suite/session) are available in subsequent ones.
-- **Modern C++**: Supports C++20 and potentially C++ modules (depending on the Clang version installed).
+- **Modern C++**: Supports C++20 and potentially C++ modules.
+- **Libc++ Support**: Configured to use LLVM's libc++ by default.
 
 **Basic Usage Example:**
 
@@ -40,6 +41,9 @@ Add Include Path
 
 Adds directories to the C++ include search path (equivalent to ``-I`` flag).
 
+Paths added here are used by `Start Kernel` (at startup) and `Source Include` 
+(to resolve header files).
+
 **Arguments:**
 
 - ``paths``: One or more directory paths to add.
@@ -47,6 +51,20 @@ Adds directories to the C++ include search path (equivalent to ``-I`` flag).
 **Example:**
 
 | Add Include Path | /opt/mylib/include | ${CURDIR}/../include |
+
+
+Add Link Directory
+------------------
+
+**Arguments:** ``*paths``
+
+Adds directories to the linker search path (equivalent to ``-L`` flag).
+
+Must be called **before** `Start Kernel`.
+
+**Arguments:**
+
+- ``paths``: One or more directory paths to add.
 
 
 Assert
@@ -106,12 +124,29 @@ Basically executes ``std::cout << (expression)`` and returns the result.
 | Should Be Equal | ${val} | 200 |
 
 
+Link Libraries
+--------------
+
+**Arguments:** ``*libs``
+
+Specifies libraries to link against at startup (equivalent to ``-l`` flag).
+
+Must be called **before** `Start Kernel`.
+
+**Arguments:**
+
+- ``libs``: Names of libraries (e.g., ``m`` for libm, ``pthread``).
+
+
 Load Shared Library
 -------------------
 
 **Arguments:** ``*libraries``
 
-Loads a shared object (.so) or dynamic library (.dylib/dll) into the process.
+Loads a shared object (.so) or dynamic library (.dylib/dll) into the process via ``dlopen``.
+
+This allows calling functions from shared libraries that are not linked at startup.
+Ensure symbols are loaded with global visibility (RTLD_GLOBAL).
 
 **Arguments:**
 
@@ -135,7 +170,7 @@ Shutdown Kernel
 
 Stops the running C++ kernel and cleans up resources.
 
-It is recommended to use this in the ``Test Teardown`` or ``Suite Teardown``.
+This also clears the accumulated include paths and link settings.
 
 
 Source Exec
@@ -162,20 +197,16 @@ If the code throws an exception or fails to compile, the test fails.
 | ${out}= | Source Exec | std::cout << "Hello"; |
 
 
-Source Exec And Return Output
------------------------------
-
-**Arguments:** ``*parts``
-
-Legacy alias for `Source Exec`.
-
-
 Source Include
 --------------
 
 **Arguments:** ``*files``
 
 Includes header files in the current session.
+
+This keyword attempts to resolve the provided file names. If a file is not
+found in the current directory, it searches through the paths added via
+`Add Include Path` and uses an absolute path if a match is found.
 
 **Arguments:**
 
@@ -218,6 +249,8 @@ standard library and prepares the environment.
 
 The initialization process also defines a helper function ``_robot_demangle`` 
 to assist with type introspection.
+
+It configures the kernel to use ``libc++``.
 
 **Example:**
 

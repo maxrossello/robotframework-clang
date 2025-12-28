@@ -170,3 +170,64 @@ We can add custom directories to the include path and load specific headers.
         Should Be Equal    ${pi_val}    3.14159
         
         [Teardown]    Run Keywords    Shutdown Kernel    AND    Remove Directory    ${temp_dir}    recursive=True
+
+Shared Libraries
+----------------
+
+We can also load compiled shared libraries (.so/.dylib/dll) into the running kernel.
+
+.. code:: robotframework
+
+    *** Test Cases ***
+    Load Shared Library Test
+        [Documentation]    Compiles a shared lib and loads it at runtime via dlopen.
+        [Setup]    None
+        
+        ${temp_dir}=    Join Path    ${OUTPUT DIR}    dlopen_test
+        Create Directory    ${temp_dir}
+        ${src_path}=    Join Path    ${temp_dir}    dlopen_lib.cpp
+        ${so_path}=     Join Path    ${temp_dir}    libdlopen_lib.so
+        
+        Create File    ${src_path}    extern "C" int dlopen_func() { return 789; }
+
+        # Compile shared library
+        ${rc}    ${out}=    Run And Return Rc And Output    clang++ -shared -fPIC -fvisibility=default -o ${so_path} ${src_path}
+        Should Be Equal As Integers    ${rc}    0
+
+        Start Kernel
+        Load Shared Library    ${so_path}
+        
+        Source Parse    extern "C" int dlopen_func();
+        ${res}=    Source Exec    std::cout << dlopen_func();
+        Should Be Equal    ${res}    789
+
+        [Teardown]    Run Keywords    Shutdown Kernel    AND    Remove Directory    ${temp_dir}    recursive=True
+
+    Link Libraries Test
+        [Documentation]    Verifies linking libraries at startup (-L and -l flags).
+        [Setup]    None
+        
+        ${temp_dir}=    Join Path    ${OUTPUT DIR}    link_test
+        Create Directory    ${temp_dir}
+        ${src_path}=    Join Path    ${temp_dir}    link_lib.cpp
+        # Name must start with 'lib' for -l to work
+        ${so_path}=     Join Path    ${temp_dir}    libmylink.so
+        
+        Create File    ${src_path}    extern "C" int link_func() { return 456; }
+
+        # Compile shared library
+        ${rc}    ${out}=    Run And Return Rc And Output    clang++ -shared -fPIC -fvisibility=default -o ${so_path} ${src_path}
+        Should Be Equal As Integers    ${rc}    0
+
+        # Configure linking BEFORE starting kernel
+        Add Link Directory    ${temp_dir}
+        Link Libraries    mylink
+
+        Start Kernel
+        
+        Source Parse    extern "C" int link_func();
+        ${res}=    Source Exec    std::cout << link_func();
+        Should Be Equal    ${res}    456
+
+        [Teardown]    Run Keywords    Shutdown Kernel    AND    Remove Directory    ${temp_dir}    recursive=True
+

@@ -58,6 +58,8 @@ class clang:
         self.km = None
         self.kc = None
         self.includes = []
+        self.link_dirs = []
+        self.link_libs = []
 
     def start_kernel(self, kernel_name='xcpp20'):
         """
@@ -97,7 +99,7 @@ class clang:
         # Configure kernel via magics
         try:
             self.source_exec('%config Interpreter.flags += ["-stdlib=libc++"]')
-            # Try adding include paths via magic as well, for compiler-level resolution
+            # Include paths
             for p in self.includes:
                 self.source_exec(f'%config Interpreter.flags += ["-I{p}"]')
         except Exception as e:
@@ -111,6 +113,7 @@ class clang:
         self.source_exec('#include <cxxabi.h>')
         self.source_exec('#include <memory>')
         self.source_exec('#include <cstdlib>')
+        self.source_exec('#include <dlfcn.h>')
         
         # Helper for demangling type names
         self.source_exec(r"""
@@ -123,6 +126,39 @@ class clang:
             return (status == 0) ? res.get() : name;
         }
         """)
+
+        # Load libraries requested via Link Libraries
+        for lib_name in self.link_libs:
+            resolved_path = None
+            
+            # Helper to generate potential filenames
+            candidates = []
+            if not lib_name.endswith(".so") and not lib_name.endswith(".dylib") and not lib_name.endswith(".dll"):
+                # Assume -l style: 'm' -> 'libm.so'
+                candidates.append(f"lib{lib_name}.so")
+                candidates.append(f"lib{lib_name}.dylib")
+                candidates.append(f"{lib_name}.so")
+            else:
+                candidates.append(lib_name)
+            
+            # Search in link directories
+            for cand in candidates:
+                for d in self.link_dirs:
+                    path = os.path.join(d, cand)
+                    if os.path.exists(path):
+                        resolved_path = path
+                        break
+                if resolved_path:
+                    break
+            
+            # If not found in custom dirs, rely on system search (using the first candidate)
+            if not resolved_path:
+                resolved_path = candidates[0]
+            
+            try:
+                self.load_shared_library(resolved_path)
+            except Exception as e:
+                print(f"*WARN* Failed to load linked library {lib_name} ({resolved_path}): {e}")
 
     def _stop_kernel(self):
         """Internal helper to stop the kernel process without clearing config."""
@@ -137,10 +173,12 @@ class clang:
         """
         Stops the running C++ kernel and cleans up resources.
 
-        This also clears the accumulated include paths.
+        This also clears the accumulated include paths and link settings.
         """
         self._stop_kernel()
         self.includes = []
+        self.link_dirs = []
+        self.link_libs = []
 
     def add_include_path(self, *paths):
         """
@@ -161,6 +199,35 @@ class clang:
             abs_p = os.path.abspath(p)
             if abs_p not in self.includes:
                 self.includes.append(abs_p)
+
+    def add_link_directory(self, *paths):
+        """
+        Adds directories to the linker search path (equivalent to ``-L`` flag).
+        
+        Must be called **before** `Start Kernel`.
+
+        **Arguments:**
+
+        - ``paths``: One or more directory paths to add.
+        """
+        for p in paths:
+            abs_p = os.path.abspath(p)
+            if abs_p not in self.link_dirs:
+                self.link_dirs.append(abs_p)
+
+    def link_libraries(self, *libs):
+        """
+        Specifies libraries to link against at startup (equivalent to ``-l`` flag).
+
+        Must be called **before** `Start Kernel`.
+        
+        **Arguments:**
+
+        - ``libs``: Names of libraries (e.g., ``m`` for libm, ``pthread``).
+        """
+        for l in libs:
+            if l not in self.link_libs:
+                self.link_libs.append(l)
 
     def source_include(self, *files):
         """
@@ -260,15 +327,12 @@ class clang:
         
         return "".join(output).strip()
 
-    def source_exec_and_return_output(self, *parts):
-        """
-        Legacy alias for `Source Exec`.
-        """
-        return self.source_exec(*parts)
-
     def load_shared_library(self, *libraries):
         """
-        Loads a shared object (.so) or dynamic library (.dylib/dll) into the process.
+        Loads a shared object (.so) or dynamic library (.dylib/dll) into the process via ``dlopen``.
+
+        This allows calling functions from shared libraries that are not linked at startup.
+        Ensure symbols are loaded with global visibility (RTLD_GLOBAL).
 
         **Arguments:**
 
@@ -278,8 +342,18 @@ class clang:
 
         | Load Shared Library | /usr/lib/libm.so |
         """
-        for library in libraries:
-            self.source_exec(f'%load_library {library}')
+        for lib in libraries:
+            # We use C++ raw string literal R"(...)" for the path to handle backslashes correctly if any
+            code = f"""
+            {{
+                void* handle = dlopen(R"({lib})", RTLD_NOW | RTLD_GLOBAL);
+                if (!handle) {{
+                    std::string err = dlerror();
+                    throw std::runtime_error("Failed to load library '{lib}': " + err);
+                }}
+            }}
+            """
+            self.source_exec(code)
 
     def assert_(self, cond, otherwise=None):
         """

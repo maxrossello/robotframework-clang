@@ -1,5 +1,6 @@
-graft tests
+graft docs
 graft recipe
 include README.md
+include LICENSE
 include pyproject.toml
 global-exclude *.py[cod]

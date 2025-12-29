@@ -85,7 +85,7 @@ pip install .[docs]
 make docs
 ```
 
-The output will be available in `docs/_build/html/index.html`.
+The output will be available in html/index.html.
 
 ## License
 

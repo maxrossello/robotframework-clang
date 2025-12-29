@@ -1,6 +1,6 @@
 {% set name = "robotframework-clang" %}
-{% set version = "0.1.0" %}
-# DEFINIZIONE VERSIONI DIPENDENZE ESTERNE
+{% set version = "0.1.1" %}
+{% set python_min = "3.10" %}
 {% set xeus_cpp_version = "0.8.0" %}
 {% set clang_major_version = "20" %}
 
@@ -13,21 +13,20 @@ source:
 
 build:
   number: 0
-  noarch: python
+  skip: true  # [py < {{ python_min|replace('.', '') }}]
   script: {{ PYTHON }} -m pip install . -vv
 
 requirements:
   host:
-    - python >=3.12
+    - python
     - pip
     - setuptools >=61.0
     - wheel
   run:
-    - python >=3.12
+    - python
     - robotframework
     - jupyter_client
     - docutils
-    # C++ dependencies
     - xeus-cpp >={{ xeus_cpp_version }}
     - clang >={{ clang_major_version }},<{{ clang_major_version|int + 1 }}.0a0
     - libcxx
@@ -36,12 +35,22 @@ test:
   source_files:
     - docs
   requires:
+    - python
     - robotframework
     - docutils
+    - clang >={{ clang_major_version }},<{{ clang_major_version|int + 1 }}.0a0
+    - xeus-cpp >={{ xeus_cpp_version }}
+    - libcxx
   commands:
     - robot --extension rst docs/tests.rst
 
 about:
-  home: https://github.com/maxrossello/robotframework-clang
+  home: https://github.com/maxrossello/{{ name }}
   license: Apache-2.0
+  license_file: LICENSE
   summary: 'Robot Framework library for Clang/C++ interaction via Xeus'
+  dev_url: https://github.com/maxrossello/{{ name }}
+
+extra:
+  recipe-maintainers:
+    - maxrossello

@@ -37,7 +37,7 @@ Here is why:
 
 ## Requirements
 
-- Python 3.8+
+- Python 3.10+
 - **xeus-cpp 0.8.0**
 - **Clang 20** (Note: Clang 21 is currently not supported by xeus-cpp 0.8.0)
 - **libcxx** (LLVM C++ standard library)

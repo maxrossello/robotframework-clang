@@ -85,21 +85,58 @@ class clang:
         if self.km:
             self._stop_kernel()
 
-        self.km = KernelManager(kernel_name=kernel_name)
-        self.km.start_kernel(stderr=subprocess.DEVNULL)
+        # Ensure Jupyter can find the kernel in the current Conda environment
+        # This is especially important on Windows CI
+        prefix = os.environ.get('CONDA_PREFIX') or sys.prefix
+        if prefix:
+            jupyter_path = os.path.join(prefix, 'share', 'jupyter')
+            if os.path.exists(jupyter_path):
+                existing_path = os.environ.get('JUPYTER_PATH', '')
+                if jupyter_path not in existing_path:
+                    os.environ['JUPYTER_PATH'] = os.pathsep.join([jupyter_path, existing_path]) if existing_path else jupyter_path
+
+        try:
+            self.km = KernelManager(kernel_name=kernel_name)
+            self.km.start_kernel(stderr=subprocess.DEVNULL)
+        except Exception as e:
+            raise RuntimeError(f"Failed to start C++ Kernel '{kernel_name}': {e}. "
+                               f"Check if it's installed (jupyter kernelspec list).")
         
         self.kc = self.km.client()
         self.kc.start_channels()
         try:
-            self.kc.wait_for_ready(timeout=10)
+            self.kc.wait_for_ready(timeout=15)
         except RuntimeError:
             self._stop_kernel()
-            raise RuntimeError("C++ Kernel failed to start. Check your mamba environment.")
+            raise RuntimeError("C++ Kernel timed out while starting. Check your environment.")
 
         # Configure kernel via magics
         try:
             self.source_exec('%config Interpreter.flags += ["-stdlib=libc++"]')
-            # Include paths
+            
+            # Auto-discover include paths for the current environment
+            if prefix:
+                # 1. Standard C++ headers (libc++)
+                libcxx_inc = os.path.join(prefix, 'include', 'c++', 'v1')
+                if os.path.exists(libcxx_inc):
+                    self.source_exec(f'%config Interpreter.flags += ["-isystem", "{libcxx_inc}"]')
+                
+                # 2. Clang Resource Directory (internal headers like stddef.h)
+                clang_lib_dir = os.path.join(prefix, 'lib', 'clang')
+                if os.path.exists(clang_lib_dir):
+                    versions = sorted(os.listdir(clang_lib_dir), reverse=True)
+                    for v in versions:
+                        res_dir = os.path.join(clang_lib_dir, v, 'include')
+                        if os.path.exists(res_dir):
+                            self.source_exec(f'%config Interpreter.flags += ["-isystem", "{res_dir}"]')
+                            break
+
+                # 3. Environment general include dir
+                gen_inc = os.path.join(prefix, 'include')
+                if os.path.exists(gen_inc):
+                    self.source_exec(f'%config Interpreter.flags += ["-isystem", "{gen_inc}"]')
+
+            # Custom include paths added via Add Include Path
             for p in self.includes:
                 self.source_exec(f'%config Interpreter.flags += ["-I{p}"]')
         except Exception as e:

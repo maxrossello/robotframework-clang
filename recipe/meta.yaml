@@ -1,6 +1,7 @@
 {% set name = "robotframework-clang" %}
 {% set version = "0.1.1" %}
 {% set python_min = "3.10" %}
+{% set py_min_num = "310" %}
 {% set xeus_cpp_version = "0.8.0" %}
 {% set clang_major_version = "20" %}
 
@@ -13,7 +14,7 @@ source:
 
 build:
   number: 0
-  skip: true  # [py < {{ python_min|replace('.', '') }}]
+  skip: true  # [py < {{ py_min_num }}]
   script: {{ PYTHON }} -m pip install . -vv
 
 requirements:

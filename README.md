@@ -15,9 +15,25 @@ Unlike classic unit test frameworks, `robotframework-clang`:
 - **Advanced native C++ support**: By using Clang-REPL, you can leverage the latest language features, including **C++ Modules**, without the configuration complexity of traditional build systems.
 - **Isolation and Fast Iteration**: Each suite can manage its own C++ kernel, allowing isolated tests and immediate feedback without full compilation and linking cycles.
 
-This approach is preferred over `cppyy` + `cling` for several key reasons:
-- **Lifecycle Management**: Clang-REPL kernels can be stopped and restarted at will, ensuring strict isolation between tests. In contrast, `cling` cannot be reset once initialized, requiring the entire host process to terminate to clear the state.
-- **Performance and Compatibility**: `clang-repl` is built on modern LLVM/Clang infrastructure, proceeding at the same pace and performance as the `clang` compiler itself, whereas `cling` is based on older forks and often introduces overhead.
+## Why Clang-REPL (xeus-cpp) over cppyy?
+
+While `cppyy` (based on Cling) is an excellent tool for creating Pythonic bindings and manipulating C++ objects directly from Python, this library consciously chooses **Clang-REPL** (via `xeus-cpp`) for the specific use case of **Unit Testing**.
+
+Here is why:
+
+1.  **Process Isolation & Stability**:
+    *   **xeus-cpp**: Uses a client-server architecture (Jupyter Kernel). If the C++ code segfaults or crashes, only the kernel subprocess dies. Robot Framework detects the failure, reports it, and can restart the kernel for the next test suite.
+    *   **cppyy**: Runs in the same process as Python. A C++ crash brings down the entire test runner, causing the loss of test reports and halting execution.
+
+2.  **Future-Proofing & Standards**:
+    *   **Clang-REPL**: Is part of the upstream LLVM project. It represents the future of interactive C++ (with ROOT and CppInterOp moving in this direction) and guarantees day-one support for new compiler features.
+    *   **Cling**: Is a legacy fork of Clang. While powerful, it often lags behind upstream LLVM versions.
+
+3.  **Mature C++20 Support**:
+    *   Thanks to the underlying Clang 20+ engine, this library provides robust support for modern C++ standards, including C++20 Modules and Concepts, which are essential for testing modern codebases.
+
+4.  **Testing vs. Bindings**:
+    *   The goal here is not to "write C++ in Python" (bindings), but to **verify C++ behavior** in its native environment. We want to compile and run C++ snippets exactly as a compiler would, without the "magic" or type conversion layers that might obscure bugs in the C++ logic itself.
 
 ## Requirements
 

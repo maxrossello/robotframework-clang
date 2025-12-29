@@ -190,8 +190,9 @@ We can also load compiled shared libraries (.so/.dylib/dll) into the running ker
         
         Create File    ${src_path}    extern "C" int dlopen_func() { return 789; }
 
-        # Compile shared library
-        ${rc}    ${out}=    Run And Return Rc And Output    clang++ -shared -fPIC -fvisibility=default -o ${so_path} ${src_path}
+        # Compile shared library using CXX env var if available (standard in Conda)
+        ${cxx}=    Get Environment Variable    CXX    clang++
+        ${rc}    ${out}=    Run And Return Rc And Output    ${cxx} -shared -fPIC -fvisibility=default -o ${so_path} ${src_path}
         Should Be Equal As Integers    ${rc}    0
 
         Start Kernel
@@ -215,8 +216,9 @@ We can also load compiled shared libraries (.so/.dylib/dll) into the running ker
         
         Create File    ${src_path}    extern "C" int link_func() { return 456; }
 
-        # Compile shared library
-        ${rc}    ${out}=    Run And Return Rc And Output    clang++ -shared -fPIC -fvisibility=default -o ${so_path} ${src_path}
+        # Compile shared library using CXX env var if available (standard in Conda)
+        ${cxx}=    Get Environment Variable    CXX    clang++
+        ${rc}    ${out}=    Run And Return Rc And Output    ${cxx} -shared -fPIC -fvisibility=default -o ${so_path} ${src_path}
         Should Be Equal As Integers    ${rc}    0
 
         # Configure linking BEFORE starting kernel

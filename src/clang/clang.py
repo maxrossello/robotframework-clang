@@ -88,13 +88,14 @@ class clang:
         # Build flags for the kernel process
         kernel_flags = ["-stdlib=libc++"]
         
-        # 1. Auto-discover Conda/Environment include paths
+        # 1. Discover Conda/Environment paths
         prefix = os.environ.get('CONDA_PREFIX') or sys.prefix
+        inc_paths = []
         if prefix:
             # Standard C++ headers (libc++)
             libcxx_inc = os.path.join(prefix, 'include', 'c++', 'v1')
             if os.path.exists(libcxx_inc):
-                kernel_flags.extend(["-isystem", libcxx_inc])
+                inc_paths.append(libcxx_inc)
             
             # Clang Resource Directory (internal headers like stddef.h)
             clang_lib_dir = os.path.join(prefix, 'lib', 'clang')
@@ -103,28 +104,42 @@ class clang:
                 for v in versions:
                     res_dir = os.path.join(clang_lib_dir, v, 'include')
                     if os.path.exists(res_dir):
-                        kernel_flags.extend(["-isystem", res_dir])
+                        inc_paths.append(res_dir)
                         break
 
             # Environment general include dir
             gen_inc = os.path.join(prefix, 'include')
             if os.path.exists(gen_inc):
-                kernel_flags.extend(["-isystem", gen_inc])
+                inc_paths.append(gen_inc)
 
-            # 2. Ensure Jupyter can find the kernel in the current Conda environment (Windows fix)
+            # Ensure Jupyter can find the kernel (Windows fix)
             jupyter_path = os.path.join(prefix, 'share', 'jupyter')
             if os.path.exists(jupyter_path):
                 existing_path = os.environ.get('JUPYTER_PATH', '')
                 if jupyter_path not in existing_path:
                     os.environ['JUPYTER_PATH'] = os.pathsep.join([jupyter_path, existing_path]) if existing_path else jupyter_path
 
-        # 3. Add custom include paths
-        for p in self.includes:
-            kernel_flags.extend(["-I", p])
+        # 2. Add custom include paths
+        inc_paths.extend(self.includes)
+
+        # 3. Set environment variables for the kernel process
+        # Using CPLUS_INCLUDE_PATH and CPATH is the most robust way to guide Clang
+        if inc_paths:
+            new_inc_env = os.path.pathsep.join(inc_paths)
+            for var in ['CPLUS_INCLUDE_PATH', 'CPATH']:
+                existing = os.environ.get(var, '')
+                os.environ[var] = os.pathsep.join([new_inc_env, existing]) if existing else new_inc_env
+
+        # 4. Set Linker environment variables
+        if self.link_dirs:
+            new_lib_env = os.path.pathsep.join(self.link_dirs)
+            for var in ['LD_LIBRARY_PATH', 'LIBRARY_PATH', 'DYLD_LIBRARY_PATH']:
+                existing = os.environ.get(var, '')
+                os.environ[var] = os.pathsep.join([new_lib_env, existing]) if existing else new_lib_env
 
         try:
             self.km = KernelManager(kernel_name=kernel_name)
-            # Pass flags directly to the kernel process via extra_arguments
+            # Pass libc++ flag
             self.km.start_kernel(stderr=subprocess.DEVNULL, extra_arguments=kernel_flags)
         except Exception as e:
             raise RuntimeError(f"Failed to start C++ Kernel '{kernel_name}': {e}. "
@@ -133,7 +148,7 @@ class clang:
         self.kc = self.km.client()
         self.kc.start_channels()
         try:
-            self.kc.wait_for_ready(timeout=15)
+            self.kc.wait_for_ready(timeout=20)
         except RuntimeError:
             self._stop_kernel()
             raise RuntimeError("C++ Kernel timed out while starting. Check your environment.")
@@ -163,21 +178,17 @@ class clang:
         }
         """)
 
-        # Load libraries requested via Link Libraries
+        # 5. Load libraries requested via Link Libraries
         for lib_name in self.link_libs:
             resolved_path = None
-            
-            # Helper to generate potential filenames
             candidates = []
             if not lib_name.endswith(".so") and not lib_name.endswith(".dylib") and not lib_name.endswith(".dll"):
-                # Assume -l style: 'm' -> 'libm.so'
                 candidates.append(f"lib{lib_name}.so")
                 candidates.append(f"lib{lib_name}.dylib")
                 candidates.append(f"{lib_name}.so")
             else:
                 candidates.append(lib_name)
             
-            # Search in link directories
             for cand in candidates:
                 for d in self.link_dirs:
                     path = os.path.join(d, cand)
@@ -187,22 +198,30 @@ class clang:
                 if resolved_path:
                     break
             
-            # If not found in custom dirs, rely on system search (using the first candidate)
             if not resolved_path:
                 resolved_path = candidates[0]
             
             try:
                 self.load_shared_library(resolved_path)
             except Exception as e:
-                print(f"*WARN* Failed to load linked library {lib_name} ({resolved_path}): {e}")
+                # Library linking failure should be fatal during setup
+                self._stop_kernel()
+                raise RuntimeError(f"Failed to load linked library {lib_name} ({resolved_path}): {e}")
 
     def _stop_kernel(self):
         """Internal helper to stop the kernel process without clearing config."""
         if self.kc:
-            self.kc.stop_channels()
+            try:
+                self.kc.stop_channels()
+            except:
+                pass
             self.kc = None
         if self.km:
-            self.km.shutdown_kernel()
+            try:
+                if self.km.has_kernel:
+                    self.km.shutdown_kernel()
+            except:
+                pass
             self.km = None
 
     def shutdown_kernel(self):

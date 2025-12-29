@@ -10,11 +10,10 @@ readme = "README.md"
 authors = [
   { name = "Massimo Rossello" },
 ]
-license = { text = "Apache-2.0" }
+license = "Apache-2.0"
 classifiers = [
     "Framework :: Robot Framework",
     "Programming Language :: Python :: 3",
-    "License :: OSI Approved :: Apache Software License",
 ]
 dependencies = [
     "robotframework",

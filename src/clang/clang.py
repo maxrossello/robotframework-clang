@@ -103,20 +103,24 @@ class clang:
                 existing = os.environ.get(var, '')
                 os.environ[var] = os.pathsep.join([new_lib_env, existing]) if existing else new_lib_env
 
-        # Ensure Jupyter can find the kernel (Helper for some Conda envs)
-        # We keep this simple check just in case
+        # Ensure Jupyter can find the kernel spec in Conda environments, crucial for Windows.
         prefix = os.environ.get('CONDA_PREFIX') or sys.prefix
-        jupyter_path = os.path.join(prefix, 'share', 'jupyter')
-        if os.path.exists(jupyter_path):
-            existing_path = os.environ.get('JUPYTER_PATH', '')
-            if jupyter_path not in existing_path:
-                os.environ['JUPYTER_PATH'] = os.pathsep.join([jupyter_path, existing_path]) if existing_path else jupyter_path
+        if prefix:
+            jupyter_path = os.path.join(prefix, 'share', 'jupyter')
+            if os.path.exists(jupyter_path):
+                existing_path = os.environ.get('JUPYTER_PATH', '')
+                if jupyter_path not in existing_path.split(os.pathsep):
+                    os.environ['JUPYTER_PATH'] = os.pathsep.join([jupyter_path, existing_path]) if existing_path else jupyter_path
 
         try:
             self.km = KernelManager(kernel_name=kernel_name)
             
-            # Unconditionally use and link against libc++ on all platforms, as requested.
-            extra_args = ["-stdlib=libc++", "-lc++"]
+            # Platform-specific flags:
+            # - Use and link libc++ on non-Windows systems as requested.
+            # - On Windows, let Clang default to the MSVC standard library.
+            extra_args = []
+            if sys.platform != 'win32':
+                extra_args.extend(["-stdlib=libc++", "-lc++"])
 
             # Pass flags directly to the kernel process
             self.km.start_kernel(stderr=subprocess.DEVNULL, extra_arguments=extra_args)

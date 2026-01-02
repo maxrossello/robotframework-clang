@@ -178,32 +178,52 @@ We can also load compiled shared libraries (.so/.dylib/dll) into the running ker
 
 .. code:: robotframework
 
+    *** Keywords ***
+    Run Unix Compile
+        [Arguments]    ${cmd}    ${flags}    ${ldflags}    ${src}    ${out}
+        ${rc}    ${output}=    Run And Return Rc And Output    ${cmd} ${flags} -DEXPORT="" -shared -fPIC -fvisibility=default ${ldflags} -o ${out} ${src}
+        Should Be Equal As Integers    ${rc}    0
+    
+    Run Windows Compile
+        [Arguments]    ${cmd}    ${src}    ${out}
+        # Assume clang-cl or compatible gcc syntax
+        ${rc}    ${output}=    Run And Return Rc And Output    ${cmd} -DEXPORT="__declspec(dllexport)" -shared -o ${out} ${src}
+        Should Be Equal As Integers    ${rc}    0
+    
     *** Test Cases ***
     Load Shared Library Test
-        [Documentation]    Compiles a shared lib and loads it at runtime via dlopen.
+        [Documentation]    Compiles a shared lib and loads it at runtime via dlopen/LoadLibrary.
         [Setup]    None
         
         ${temp_dir}=    Join Path    ${OUTPUT DIR}    dlopen_test
         Create Directory    ${temp_dir}
-        ${src_path}=    Join Path    ${temp_dir}    dlopen_lib.cpp
-        ${so_path}=     Join Path    ${temp_dir}    libdlopen_lib.so
         
-        Create File    ${src_path}    extern "C" int dlopen_func() { return 789; }
-
-        # Compile shared library using CXX env var if available (standard in Conda)
-        ${cxx}=    Get Environment Variable    CXX    clang++
-        ${rc}    ${out}=    Run And Return Rc And Output    ${cxx} -shared -fPIC -fvisibility=default -o ${so_path} ${src_path}
-        Should Be Equal As Integers    ${rc}    0
-
+        ${is_windows}=    Evaluate    sys.platform == 'win32'    modules=sys
+        ${ext}=    Set Variable If    ${is_windows}    dll    so
+    
+        ${src_path}=    Join Path    ${temp_dir}    dlopen_lib.cpp
+        ${lib_path}=    Join Path    ${temp_dir}    libdlopen_lib.${ext}
+        
+        Create File    ${src_path}    extern "C" EXPORT int dlopen_func() { return 789; }
+    
+        ${cxx}=         Get Environment Variable    CXX         clang++
+        ${cxxflags}=    Get Environment Variable    CXXFLAGS    ${EMPTY}
+        ${ldflags}=     Get Environment Variable    LDFLAGS     ${EMPTY}
+        
+        Run Keyword If    ${is_windows}
+        ...    Run Windows Compile    ${cxx}    ${src_path}    ${lib_path}
+        ...  ELSE
+        ...    Run Unix Compile       ${cxx}    ${cxxflags}    ${ldflags}    ${src_path}    ${lib_path}
+    
         Start Kernel
-        Load Shared Library    ${so_path}
+        Load Shared Library    ${lib_path}
         
         Source Parse    extern "C" int dlopen_func();
         ${res}=    Source Exec    std::cout << dlopen_func();
         Should Be Equal    ${res}    789
-
+    
         [Teardown]    Run Keywords    Shutdown Kernel    AND    Remove Directory    ${temp_dir}    recursive=True
-
+            
     Link Libraries Test
         [Documentation]    Verifies linking libraries at startup (-L and -l flags).
         [Setup]    None

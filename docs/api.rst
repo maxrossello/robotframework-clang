@@ -176,7 +176,7 @@ This also clears the accumulated include paths and link settings.
 Source Exec
 -----------
 
-**Arguments:** ``*parts``
+**Arguments:** ``*parts, timeout=30``
 
 Executes C++ code and returns the standard output.
 
@@ -187,6 +187,7 @@ If the code throws an exception or fails to compile, the test fails.
 **Arguments:**
 
 - ``parts``: One or more strings constituting the C++ code to run.
+- ``timeout``: Maximum time (seconds) to wait for kernel response. Default 30s.
 
 **Returns:**
 

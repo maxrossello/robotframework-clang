@@ -82,50 +82,54 @@ class clang:
 
         | Start Kernel | kernel_name=xcpp17 |
         """
+
         if self.km:
             self._stop_kernel()
 
-        # 1. Setup environment variables for User Custom Paths
-        # We no longer auto-discover Conda paths here; we rely on the environment 
-        # (and 'sysroot_linux-64' in Conda recipe) to be correct.
-        
-        # Set Includes environment variables only for explicitly added paths
+        # --- 1. CONFIGURAZIONE AMBIENTE (PATH) ---
         if self.includes:
             new_inc_env = os.path.pathsep.join(self.includes)
             for var in ['CPLUS_INCLUDE_PATH', 'CPATH']:
                 existing = os.environ.get(var, '')
                 os.environ[var] = os.pathsep.join([new_inc_env, existing]) if existing else new_inc_env
 
-        # Set Linker environment variables
         if self.link_dirs:
             new_lib_env = os.path.pathsep.join(self.link_dirs)
-            for var in ['LD_LIBRARY_PATH', 'LIBRARY_PATH', 'DYLD_LIBRARY_PATH']:
+            vars_to_update = ['LD_LIBRARY_PATH', 'LIBRARY_PATH', 'DYLD_LIBRARY_PATH']
+            if sys.platform == 'win32':
+                vars_to_update.append('PATH')
+            for var in vars_to_update:
                 existing = os.environ.get(var, '')
                 os.environ[var] = os.pathsep.join([new_lib_env, existing]) if existing else new_lib_env
 
-        # Ensure Jupyter can find the kernel spec in Conda environments, crucial for Windows.
+        # Windows Kernel Discovery Fix
         prefix = os.environ.get('CONDA_PREFIX') or sys.prefix
         if prefix:
-            jupyter_path = os.path.join(prefix, 'share', 'jupyter')
-            if os.path.exists(jupyter_path):
-                existing_path = os.environ.get('JUPYTER_PATH', '')
-                if jupyter_path not in existing_path.split(os.pathsep):
-                    os.environ['JUPYTER_PATH'] = os.pathsep.join([jupyter_path, existing_path]) if existing_path else jupyter_path
+            potential_paths = [
+                os.path.join(prefix, 'share', 'jupyter'),
+                os.path.join(prefix, 'Library', 'share', 'jupyter')
+            ]
+            current_jupyter_path = os.environ.get('JUPYTER_PATH', '')
+            path_list = current_jupyter_path.split(os.pathsep) if current_jupyter_path else []
+            updated = False
+            for p in potential_paths:
+                if os.path.exists(p) and p not in path_list:
+                    path_list.insert(0, p)
+                    updated = True
+            if updated:
+                os.environ['JUPYTER_PATH'] = os.pathsep.join(path_list)
 
+        # --- 2. AVVIO PROCESSO ---
         try:
             self.km = KernelManager(kernel_name=kernel_name)
-            
-            # Platform-specific flags:
-            # - Use and link libc++ on non-Windows systems as requested.
-            # - On Windows, let Clang default to the MSVC standard library.
             extra_args = []
             if sys.platform != 'win32':
+                # Force libc++ on Linux/Mac for consistency with Conda Forge Clang
                 extra_args.extend(["-stdlib=libc++", "-lc++"])
-
-            # Pass flags directly to the kernel process
+            
             self.km.start_kernel(stderr=subprocess.DEVNULL, extra_arguments=extra_args)
         except Exception as e:
-            raise RuntimeError(f"Failed to start C++ Kernel '{kernel_name}': {e}.")
+            raise RuntimeError(f"Failed to start C++ Kernel '{kernel_name}': {e}")
         
         self.kc = self.km.client()
         self.kc.start_channels()
@@ -133,53 +137,113 @@ class clang:
             self.kc.wait_for_ready(timeout=20)
         except RuntimeError:
             self._stop_kernel()
-            raise RuntimeError("C++ Kernel timed out while starting. Check your environment.")
+            raise RuntimeError("Kernel timed out at startup.")
 
-        # Standard headers
+        # --- 3. INIEZIONE HEADERS (Step separato per stabilità) ---
+        common_headers = [
+            '#include <iostream>', '#include <string>', '#include <stdexcept>',
+            '#include <vector>', '#include <memory>', '#include <typeinfo>',
+            '#include <cstdlib>'
+        ]
+        
+        if sys.platform == 'win32':
+            common_headers.append('#include <windows.h>')
+        else:
+            common_headers.extend(['#include <dlfcn.h>', '#include <cxxabi.h>'])
+
         try:
-            self.source_exec('#include <iostream>\n#include <stdexcept>\n#include <typeinfo>\n#include <cxxabi.h>\n#include <memory>\n#include <cstdlib>\n#include <dlfcn.h>', timeout=60)
+            self.source_exec('\n'.join(common_headers), timeout=30)
         except Exception as e:
             self._stop_kernel()
-            raise RuntimeError(f"Failed to initialize standard headers: {e}")
-        
-        # Helper for demangling type names
-        self.source_exec(r"""
-        std::string _robot_demangle(const char* name) {
-            int status = -1;
-            std::unique_ptr<char, void(*)(void*)> res {
-                abi::__cxa_demangle(name, NULL, NULL, &status),
-                std::free
-            };
-            return (status == 0) ? res.get() : name;
-        }
-        """)
+            raise RuntimeError(f"Failed to load standard headers: {e}")
 
-        # 5. Load libraries requested via Link Libraries
+        # --- 4. INIEZIONE HELPER FUNCTIONS (Generazione dinamica da Python) ---
+        # Definiamo il codice C++ specifico per l'OS qui in Python per pulizia
+        
+        cpp_helpers = ""
+        
+        if sys.platform == 'win32':
+            # --- WINDOWS IMPLEMENTATION ---
+            cpp_helpers = r"""
+            void* _robot_load_lib(const char* path) {
+                std::string p = path;
+                for (auto &c : p) if (c == '/') c = '\\'; // Normalize slashes
+                HMODULE h = LoadLibrary(p.c_str());
+                if (!h) throw std::runtime_error("LoadLibrary failed: " + p);
+                return static_cast<void*>(h);
+            }
+            std::string _robot_demangle(const char* name) {
+                return std::string(name); // No simple demangle on Win
+            }
+            """
+        else:
+            # --- LINUX/MAC IMPLEMENTATION ---
+            cpp_helpers = r"""
+            void* _robot_load_lib(const char* path) {
+                // RTLD_GLOBAL is crucial for symbols to be seen by subsequent JIT code
+                void* h = dlopen(path, RTLD_NOW | RTLD_GLOBAL); 
+                if (!h) {
+                    const char* err = dlerror();
+                    throw std::runtime_error("dlopen failed: " + std::string(err ? err : "unknown"));
+                }
+                return h;
+            }
+
+            std::string _robot_demangle(const char* name) {
+                int status = -1;
+                // __cxa_demangle allocates memory that must be freed
+                char* res = abi::__cxa_demangle(name, NULL, NULL, &status);
+                if (status == 0 && res != NULL) {
+                    std::string demangled(res);
+                    std::free(res); // Important: free the buffer
+                    return demangled;
+                }
+                return std::string(name);
+            }
+            """
+
+        try:
+            self.source_exec(cpp_helpers, timeout=30)
+        except Exception as e:
+            self._stop_kernel()
+            raise RuntimeError(f"Failed to inject helper functions: {e}")
+        
+        # --- 5. LINK LIBRARIES ---
+        # (Il codice per caricare le librerie rimane invariato, ora chiamerà _robot_load_lib sicuro)
         for lib_name in self.link_libs:
-            resolved_path = None
-            candidates = []
+            self._safe_load_library(lib_name)
+
+    def _safe_load_library(self, lib_name):
+        """Helper interno per gestire la logica di path search delle librerie"""
+        resolved_path = None
+        candidates = []
+        
+        if sys.platform == 'win32':
+            if not lib_name.lower().endswith('.dll'): candidates.append(f"{lib_name}.dll")
+            candidates.append(lib_name)
+        else:
             if not lib_name.endswith(('.so', '.dylib', '.dll')):
-                candidates.extend([f"lib{lib_name}.so", f"lib{lib_name}.dylib", f"{lib_name}.dll", lib_name])
+                candidates.extend([f"lib{lib_name}.dylib", f"lib{lib_name}.so", lib_name])
             else:
                 candidates.append(lib_name)
-            
-            for cand in candidates:
-                for d in self.link_dirs:
-                    path = os.path.abspath(os.path.join(d, cand))
-                    if os.path.exists(path):
-                        resolved_path = path
-                        break
-                if resolved_path:
+        
+        for cand in candidates:
+            for d in self.link_dirs:
+                path = os.path.join(d, cand)
+                if os.path.exists(path):
+                    resolved_path = os.path.abspath(path)
                     break
-            
-            target = resolved_path if resolved_path else candidates[0]
-            try:
-                self.load_shared_library(target)
-            except Exception as e:
-                # Library linking failure should be fatal during setup
-                self._stop_kernel()
-                raise RuntimeError(f"Failed to load linked library {lib_name} ({target}): {e}")
-
+            if resolved_path: break
+        
+        target = resolved_path if resolved_path else candidates[0]
+        # Normalize path for C++ string (handle Windows backslashes)
+        safe_target = target.replace("\\", "/")
+        try:
+            self.source_exec(f'_robot_load_lib("{safe_target}");')
+        except Exception as e:
+             self._stop_kernel()
+             raise RuntimeError(f"Failed to load linked library {lib_name}: {e}")
+                     
     def _stop_kernel(self):
         """Internal helper to stop the kernel process without clearing config."""
         if self.kc:
@@ -373,17 +437,12 @@ class clang:
         | Load Shared Library | /usr/lib/libm.so |
         """
         for lib in libraries:
-            # We use C++ raw string literal R"(...)" for the path to handle backslashes correctly if any
-            code = f"""
-            {{
-                void* handle = dlopen(R"({lib})", RTLD_NOW | RTLD_GLOBAL);
-                if (!handle) {{
-                    std::string err = dlerror();
-                    throw std::runtime_error("Failed to load library '{lib}': " + err);
-                }}
-            }}
-            """
-            self.source_exec(code)
+            # Su Windows bisogna raddoppiare i backslash per le stringhe C++
+            # O meglio, forzare l'uso di forward slash che Windows supporta
+            safe_lib = lib.replace("\\", "/")
+            
+            # Chiamata alla funzione C++ definita nello shim
+            self.source_exec(f'_robot_load_lib("{safe_lib}");')
 
     def assert_(self, cond, otherwise=None):
         """

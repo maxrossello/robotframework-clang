@@ -1,5 +1,5 @@
 {% set name = "robotframework-clang" %}
-{% set version = "0.1.1" %}
+{% set version = "0.1.2" %}
 {% set python_min = "3.10" %}
 {% set xeus_cpp_version = "0.8.0" %}
 {% set clang_major_version = "20" %}
@@ -18,8 +18,8 @@ build:
 
 requirements:
   build:
-    - clangxx ==20.*
-    - clang ==20.*
+    - clangxx =={{ clang_major_version }}.*
+    - clang =={{ clang_major_version }}.*
     - libcxx  # [not win]
   host:
     - python

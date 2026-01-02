@@ -86,7 +86,6 @@ class clang:
         if self.km:
             self._stop_kernel()
 
-        # --- 1. CONFIGURAZIONE AMBIENTE (PATH) ---
         if self.includes:
             new_inc_env = os.path.pathsep.join(self.includes)
             for var in ['CPLUS_INCLUDE_PATH', 'CPATH']:
@@ -119,14 +118,19 @@ class clang:
             if updated:
                 os.environ['JUPYTER_PATH'] = os.pathsep.join(path_list)
 
-        # --- 2. AVVIO PROCESSO ---
         try:
             self.km = KernelManager(kernel_name=kernel_name)
             extra_args = []
-            if sys.platform != 'win32':
-                # Force libc++ on Linux/Mac for consistency with Conda Forge Clang
-                extra_args.extend(["-stdlib=libc++", "-lc++"])
-            
+            if sys.platform == 'win32':
+                extra_args.extend([
+                    "-fms-extensions", 
+                    "-fms-compatibility", 
+                    "-fdelayed-template-parsing",
+                    "-std=c++20"
+                ])
+            else:
+                extra_args.extend(["-stdlib=libc++", "-lc++", "-std=c++20"])
+                            
             self.km.start_kernel(stderr=subprocess.DEVNULL, extra_arguments=extra_args)
         except Exception as e:
             raise RuntimeError(f"Failed to start C++ Kernel '{kernel_name}': {e}")
@@ -139,7 +143,6 @@ class clang:
             self._stop_kernel()
             raise RuntimeError("Kernel timed out at startup.")
 
-        # --- 3. INIEZIONE HEADERS (Step separato per stabilità) ---
         common_headers = [
             '#include <iostream>', '#include <string>', '#include <stdexcept>',
             '#include <vector>', '#include <memory>', '#include <typeinfo>',
@@ -157,23 +160,34 @@ class clang:
             self._stop_kernel()
             raise RuntimeError(f"Failed to load standard headers: {e}")
 
-        # --- 4. INIEZIONE HELPER FUNCTIONS (Generazione dinamica da Python) ---
-        # Definiamo il codice C++ specifico per l'OS qui in Python per pulizia
-        
         cpp_helpers = ""
         
         if sys.platform == 'win32':
             # --- WINDOWS IMPLEMENTATION ---
             cpp_helpers = r"""
+            // Force load MSVC Runtime libraries into the JIT process space
+            struct _WinRuntimeLoader {
+                _WinRuntimeLoader() {
+                    LoadLibrary("vcruntime140.dll");
+                    LoadLibrary("vcruntime140_1.dll"); // Often needed for exception handling
+                    LoadLibrary("msvcp140.dll");       // Contains iostream, locale, etc.
+                }
+            };
+            static _WinRuntimeLoader _loader_instance;
+
             void* _robot_load_lib(const char* path) {
                 std::string p = path;
-                for (auto &c : p) if (c == '/') c = '\\'; // Normalize slashes
+                for (auto &c : p) if (c == '/') c = '\\';
                 HMODULE h = LoadLibrary(p.c_str());
-                if (!h) throw std::runtime_error("LoadLibrary failed: " + p);
+                if (!h) {
+                    DWORD err = GetLastError();
+                    std::cout << "DEBUG: LoadLibrary failed for " << p << " Error: " << err << std::endl;
+                    throw std::runtime_error("LoadLibrary failed: " + p);
+                }
                 return static_cast<void*>(h);
             }
             std::string _robot_demangle(const char* name) {
-                return std::string(name); // No simple demangle on Win
+                return std::string(name);
             }
             """
         else:
@@ -184,6 +198,7 @@ class clang:
                 void* h = dlopen(path, RTLD_NOW | RTLD_GLOBAL); 
                 if (!h) {
                     const char* err = dlerror();
+                    std::cout << "DEBUG: dlopen failed for " << path << " Error: " << (err ? err : "unknown") << std::endl;
                     throw std::runtime_error("dlopen failed: " + std::string(err ? err : "unknown"));
                 }
                 return h;
@@ -208,8 +223,6 @@ class clang:
             self._stop_kernel()
             raise RuntimeError(f"Failed to inject helper functions: {e}")
         
-        # --- 5. LINK LIBRARIES ---
-        # (Il codice per caricare le librerie rimane invariato, ora chiamerà _robot_load_lib sicuro)
         for lib_name in self.link_libs:
             self._safe_load_library(lib_name)
 

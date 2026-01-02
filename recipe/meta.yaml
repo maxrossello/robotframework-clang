@@ -57,6 +57,8 @@ test:
     - export JUPYTER_PLATFORM_DIRS=1  # [unix]
     - export LD_PRELOAD=$PREFIX/lib/libc++.so.1  # [linux]
     - set "PATH=%PREFIX%\Library\bin;%PREFIX%\bin;%PATH%"  # [win]
+    - set "JUPYTER_PATH=%PREFIX%\Library\share\jupyter;%PREFIX%\share\jupyter"  # [win]
+    - jupyter kernelspec list
     - robot --extension rst docs/tests.rst
 
 about:

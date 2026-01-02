@@ -1,7 +1,6 @@
 {% set name = "robotframework-clang" %}
 {% set version = "0.1.1" %}
 {% set python_min = "3.10" %}
-{% set py_min_num = "310" %}
 {% set xeus_cpp_version = "0.8.0" %}
 {% set clang_major_version = "20" %}
 
@@ -18,6 +17,10 @@ build:
   script: {{ PYTHON }} -m pip install . -vv
 
 requirements:
+  build:
+    - clangxx ==20.*
+    - clang ==20.*
+    - libcxx  # [not win]
   host:
     - python
     - pip
@@ -30,7 +33,9 @@ requirements:
     - docutils
     - xeus-cpp >={{ xeus_cpp_version }}
     - clang >={{ clang_major_version }},<{{ clang_major_version|int + 1 }}.0a0
-    - libcxx
+    - libcxx =={{ clang_major_version }}.*  # [not win]
+    - libcxx-devel =={{ clang_major_version }}.*  # [linux]
+    - libcxx-headers =={{ clang_major_version }}.*  # [linux]
 
 test:
   source_files:
@@ -39,11 +44,16 @@ test:
     - python
     - robotframework
     - docutils
-    - clang >={{ clang_major_version }},<{{ clang_major_version|int + 1 }}.0a0
+    - clangxx =={{ clang_major_version }}.*
+    - clang =={{ clang_major_version }}.*
     - xeus-cpp >={{ xeus_cpp_version }}
-    - libcxx
+    - libcxx =={{ clang_major_version }}.*  # [not win]
+    - libcxx-devel =={{ clang_major_version }}.*  # [linux]
+    - libcxx-headers =={{ clang_major_version }}.*  # [linux]
   commands:
+    - export LD_PRELOAD=$PREFIX/lib/libc++.so.1  # [linux]
     - robot --extension rst docs/tests.rst
+
 
 about:
   home: https://github.com/maxrossello/{{ name }}

@@ -85,65 +85,43 @@ class clang:
         if self.km:
             self._stop_kernel()
 
-        # Build flags for the kernel process
-        kernel_flags = ["-stdlib=libc++"]
+        # 1. Setup environment variables for User Custom Paths
+        # We no longer auto-discover Conda paths here; we rely on the environment 
+        # (and 'sysroot_linux-64' in Conda recipe) to be correct.
         
-        # 1. Discover Conda/Environment paths
-        prefix = os.environ.get('CONDA_PREFIX') or sys.prefix
-        inc_paths = []
-        if prefix:
-            # Standard C++ headers (libc++)
-            libcxx_inc = os.path.join(prefix, 'include', 'c++', 'v1')
-            if os.path.exists(libcxx_inc):
-                inc_paths.append(libcxx_inc)
-            
-            # Clang Resource Directory (internal headers like stddef.h)
-            clang_lib_dir = os.path.join(prefix, 'lib', 'clang')
-            if os.path.exists(clang_lib_dir):
-                versions = sorted(os.listdir(clang_lib_dir), reverse=True)
-                for v in versions:
-                    res_dir = os.path.join(clang_lib_dir, v, 'include')
-                    if os.path.exists(res_dir):
-                        inc_paths.append(res_dir)
-                        break
-
-            # Environment general include dir
-            gen_inc = os.path.join(prefix, 'include')
-            if os.path.exists(gen_inc):
-                inc_paths.append(gen_inc)
-
-            # Ensure Jupyter can find the kernel (Windows fix)
-            jupyter_path = os.path.join(prefix, 'share', 'jupyter')
-            if os.path.exists(jupyter_path):
-                existing_path = os.environ.get('JUPYTER_PATH', '')
-                if jupyter_path not in existing_path:
-                    os.environ['JUPYTER_PATH'] = os.pathsep.join([jupyter_path, existing_path]) if existing_path else jupyter_path
-
-        # 2. Add custom include paths
-        inc_paths.extend(self.includes)
-
-        # 3. Set environment variables for the kernel process
-        # Using CPLUS_INCLUDE_PATH and CPATH is the most robust way to guide Clang
-        if inc_paths:
-            new_inc_env = os.path.pathsep.join(inc_paths)
+        # Set Includes environment variables only for explicitly added paths
+        if self.includes:
+            new_inc_env = os.path.pathsep.join(self.includes)
             for var in ['CPLUS_INCLUDE_PATH', 'CPATH']:
                 existing = os.environ.get(var, '')
                 os.environ[var] = os.pathsep.join([new_inc_env, existing]) if existing else new_inc_env
 
-        # 4. Set Linker environment variables
+        # Set Linker environment variables
         if self.link_dirs:
             new_lib_env = os.path.pathsep.join(self.link_dirs)
             for var in ['LD_LIBRARY_PATH', 'LIBRARY_PATH', 'DYLD_LIBRARY_PATH']:
                 existing = os.environ.get(var, '')
                 os.environ[var] = os.pathsep.join([new_lib_env, existing]) if existing else new_lib_env
 
+        # Ensure Jupyter can find the kernel (Helper for some Conda envs)
+        # We keep this simple check just in case
+        prefix = os.environ.get('CONDA_PREFIX') or sys.prefix
+        jupyter_path = os.path.join(prefix, 'share', 'jupyter')
+        if os.path.exists(jupyter_path):
+            existing_path = os.environ.get('JUPYTER_PATH', '')
+            if jupyter_path not in existing_path:
+                os.environ['JUPYTER_PATH'] = os.pathsep.join([jupyter_path, existing_path]) if existing_path else jupyter_path
+
         try:
             self.km = KernelManager(kernel_name=kernel_name)
-            # Pass libc++ flag
-            self.km.start_kernel(stderr=subprocess.DEVNULL, extra_arguments=kernel_flags)
+            
+            # Unconditionally use and link against libc++ on all platforms, as requested.
+            extra_args = ["-stdlib=libc++", "-lc++"]
+
+            # Pass flags directly to the kernel process
+            self.km.start_kernel(stderr=subprocess.DEVNULL, extra_arguments=extra_args)
         except Exception as e:
-            raise RuntimeError(f"Failed to start C++ Kernel '{kernel_name}': {e}. "
-                               f"Check if it's installed (jupyter kernelspec list).")
+            raise RuntimeError(f"Failed to start C++ Kernel '{kernel_name}': {e}.")
         
         self.kc = self.km.client()
         self.kc.start_channels()
@@ -155,13 +133,7 @@ class clang:
 
         # Standard headers
         try:
-            self.source_exec('#include <iostream>')
-            self.source_exec('#include <stdexcept>')
-            self.source_exec('#include <typeinfo>')
-            self.source_exec('#include <cxxabi.h>')
-            self.source_exec('#include <memory>')
-            self.source_exec('#include <cstdlib>')
-            self.source_exec('#include <dlfcn.h>')
+            self.source_exec('#include <iostream>\n#include <stdexcept>\n#include <typeinfo>\n#include <cxxabi.h>\n#include <memory>\n#include <cstdlib>\n#include <dlfcn.h>', timeout=60)
         except Exception as e:
             self._stop_kernel()
             raise RuntimeError(f"Failed to initialize standard headers: {e}")
@@ -182,31 +154,27 @@ class clang:
         for lib_name in self.link_libs:
             resolved_path = None
             candidates = []
-            if not lib_name.endswith(".so") and not lib_name.endswith(".dylib") and not lib_name.endswith(".dll"):
-                candidates.append(f"lib{lib_name}.so")
-                candidates.append(f"lib{lib_name}.dylib")
-                candidates.append(f"{lib_name}.so")
+            if not lib_name.endswith(('.so', '.dylib', '.dll')):
+                candidates.extend([f"lib{lib_name}.so", f"lib{lib_name}.dylib", f"{lib_name}.dll", lib_name])
             else:
                 candidates.append(lib_name)
             
             for cand in candidates:
                 for d in self.link_dirs:
-                    path = os.path.join(d, cand)
+                    path = os.path.abspath(os.path.join(d, cand))
                     if os.path.exists(path):
                         resolved_path = path
                         break
                 if resolved_path:
                     break
             
-            if not resolved_path:
-                resolved_path = candidates[0]
-            
+            target = resolved_path if resolved_path else candidates[0]
             try:
-                self.load_shared_library(resolved_path)
+                self.load_shared_library(target)
             except Exception as e:
                 # Library linking failure should be fatal during setup
                 self._stop_kernel()
-                raise RuntimeError(f"Failed to load linked library {lib_name} ({resolved_path}): {e}")
+                raise RuntimeError(f"Failed to load linked library {lib_name} ({target}): {e}")
 
     def _stop_kernel(self):
         """Internal helper to stop the kernel process without clearing config."""
@@ -327,7 +295,7 @@ class clang:
         """
         self.source_exec("\n".join(parts))
 
-    def source_exec(self, *parts):
+    def source_exec(self, *parts, timeout=30):
         """
         Executes C++ code and returns the standard output.
 
@@ -338,6 +306,7 @@ class clang:
         **Arguments:**
 
         - ``parts``: One or more strings constituting the C++ code to run.
+        - ``timeout``: Maximum time (seconds) to wait for kernel response. Default 30s.
 
         **Returns:**
 
@@ -359,7 +328,7 @@ class clang:
         while True:
             try:
                 # Poll for messages from the kernel
-                msg = self.kc.get_iopub_msg(timeout=5)
+                msg = self.kc.get_iopub_msg(timeout=timeout)
                 msg_type = msg['header']['msg_type']
                 content = msg['content']
 
@@ -373,7 +342,9 @@ class clang:
                 if msg_type == 'status' and content['execution_state'] == 'idle':
                     break
             except:
-                # Timeout or empty queue
+                # Timeout or empty queue - assume timeout if we haven't seen 'idle'
+                if not errors:
+                    raise TimeoutError(f"C++ execution timed out (no response from kernel for {timeout}s).")
                 break
                 
         if errors:

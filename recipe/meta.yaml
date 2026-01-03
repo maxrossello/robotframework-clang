@@ -18,9 +18,10 @@ build:
 
 requirements:
   build:
-    - clangxx =={{ clang_major_version }}.*
-    - clang =={{ clang_major_version }}.*
-    - libcxx  # [not win]
+    - python
+    - pip
+    - setuptools >=61.0
+    - wheel
   host:
     - python
     - pip
@@ -34,8 +35,6 @@ requirements:
     - xeus-cpp >={{ xeus_cpp_version }}
     - clang >={{ clang_major_version }},<{{ clang_major_version|int + 1 }}.0a0
     - libcxx =={{ clang_major_version }}.*  # [not win]
-    - libcxx-devel =={{ clang_major_version }}.*  # [linux]
-    - libcxx-headers =={{ clang_major_version }}.*  # [linux]
 
 test:
   source_files:
@@ -45,20 +44,10 @@ test:
     - ipykernel
     - robotframework
     - docutils
-    - clangxx =={{ clang_major_version }}.*
-    - clang =={{ clang_major_version }}.*
     - xeus-cpp >={{ xeus_cpp_version }}
-    - libcxx =={{ clang_major_version }}.*  # [not win]
-    - libcxx-devel =={{ clang_major_version }}.*  # [linux]
-    - libcxx-headers =={{ clang_major_version }}.*  # [linux]
-    - vs2015_runtime        # [win]
-    - m2-base               # [win]
+    - {{ compiler('c') }}
+    - {{ compiler('cxx') }}
   commands:
-    - export JUPYTER_PLATFORM_DIRS=1  # [unix]
-    - export LD_PRELOAD=$PREFIX/lib/libc++.so.1  # [linux]
-    - set "PATH=%PREFIX%\Library\bin;%PREFIX%\bin;%PATH%"  # [win]
-    - set "JUPYTER_PATH=%PREFIX%\Library\share\jupyter;%PREFIX%\share\jupyter"  # [win]
-    - jupyter kernelspec list
     - robot --extension rst docs/tests.rst
 
 about:

@@ -14,10 +14,10 @@ We also use `OperatingSystem` to create temporary header files for testing inclu
     *** Settings ***
     Library    clang
     Library    OperatingSystem
-
+    
     Test Setup       Start Kernel
     Test Teardown    Shutdown Kernel
-
+    
 Basic Execution
 ---------------
 
@@ -181,12 +181,20 @@ We can also load compiled shared libraries (.so/.dylib/dll) into the running ker
     *** Keywords ***
     Run Unix Compile
         [Arguments]    ${cmd}    ${flags}    ${ldflags}    ${src}    ${out}
-        ${rc}    ${output}=    Run And Return Rc And Output    ${cmd} ${flags} -DEXPORT="" -shared -fPIC -fvisibility=default ${ldflags} -o ${out} ${src}
+        ${is_osx}=      Evaluate    sys.platform == 'darwin'    modules=sys
+        IF  ${is_osx}
+            ${shlib_flag}=    Set Variable    -dynamiclib
+        ELSE
+            ${shlib_flag}=    Set Variable    -shared
+        END
+        Log to console    \n${cmd} ${flags} ${shlib_flag} -DEXPORT="" -fPIC -fvisibility=default ${ldflags} -o ${out} ${src}
+        ${rc}    ${output}=    Run And Return Rc And Output    ${cmd} ${flags} ${shlib_flag} -DEXPORT="" -fPIC -fvisibility=default ${ldflags} -o ${out} ${src}
         Should Be Equal As Integers    ${rc}    0
     
     Run Windows Compile
         [Arguments]    ${cmd}    ${src}    ${out}
         # Assume clang-cl or compatible gcc syntax
+        Log to console     \n${cmd} -DEXPORT="__declspec(dllexport)" -shared -o ${out} ${src}
         ${rc}    ${output}=    Run And Return Rc And Output    ${cmd} -DEXPORT="__declspec(dllexport)" -shared -o ${out} ${src}
         Should Be Equal As Integers    ${rc}    0
     
@@ -209,12 +217,16 @@ We can also load compiled shared libraries (.so/.dylib/dll) into the running ker
         ${cxx}=         Get Environment Variable    CXX         clang++
         ${cxxflags}=    Get Environment Variable    CXXFLAGS    ${EMPTY}
         ${ldflags}=     Get Environment Variable    LDFLAGS     ${EMPTY}
+        Log to console     \ncxx=${cxx}
+        Log to console     cxxflags=${cxxflags}
+        Log to console     ldflags=${ldflags}
         
-        Run Keyword If    ${is_windows}
-        ...    Run Windows Compile    ${cxx}    ${src_path}    ${lib_path}
-        ...  ELSE
-        ...    Run Unix Compile       ${cxx}    ${cxxflags}    ${ldflags}    ${src_path}    ${lib_path}
-    
+        IF    ${is_windows}
+            Run Windows Compile    ${cxx}    ${src_path}    ${lib_path}
+        ELSE
+            Run Unix Compile       ${cxx}    ${cxxflags}    ${ldflags}    ${src_path}    ${lib_path}
+        END
+        
         Start Kernel
         Load Shared Library    ${lib_path}
         
@@ -231,15 +243,22 @@ We can also load compiled shared libraries (.so/.dylib/dll) into the running ker
         ${temp_dir}=    Join Path    ${OUTPUT DIR}    link_test
         Create Directory    ${temp_dir}
         ${src_path}=    Join Path    ${temp_dir}    link_lib.cpp
+        
+        ${is_windows}=    Evaluate    sys.platform == 'win32'    modules=sys
+        ${ext}=    Set Variable If    ${is_windows}    dll    so
         # Name must start with 'lib' for -l to work
-        ${so_path}=     Join Path    ${temp_dir}    libmylink.so
+        ${lib_path}=     Join Path    ${temp_dir}    libmylink.${ext}
         
         Create File    ${src_path}    extern "C" int link_func() { return 456; }
 
-        # Compile shared library using CXX env var if available (standard in Conda)
-        ${cxx}=    Get Environment Variable    CXX    clang++
-        ${rc}    ${out}=    Run And Return Rc And Output    ${cxx} -shared -fPIC -fvisibility=default -o ${so_path} ${src_path}
-        Should Be Equal As Integers    ${rc}    0
+        ${cxx}=         Get Environment Variable    CXX         clang++
+        ${cxxflags}=    Get Environment Variable    CXXFLAGS    ${EMPTY}
+        ${ldflags}=     Get Environment Variable    LDFLAGS     ${EMPTY}
+        
+        Run Keyword If    ${is_windows}
+        ...    Run Windows Compile    ${cxx}    ${src_path}    ${lib_path}
+        ...  ELSE
+        ...    Run Unix Compile       ${cxx}    ${cxxflags}    ${ldflags}    ${src_path}    ${lib_path}
 
         # Configure linking BEFORE starting kernel
         Add Link Directory    ${temp_dir}

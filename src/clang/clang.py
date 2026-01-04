@@ -129,7 +129,7 @@ class clang:
                     "-std=c++20"
                 ])
             else:
-                extra_args.extend(["-stdlib=libc++", "-lc++", "-std=c++20"])
+                extra_args.extend(["-stdlib=libc++", "-std=c++20"])
                             
             self.km.start_kernel(stderr=subprocess.DEVNULL, extra_arguments=extra_args)
         except Exception as e:

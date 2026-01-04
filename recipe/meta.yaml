@@ -17,37 +17,29 @@ build:
   script: {{ PYTHON }} -m pip install . -vv
 
 requirements:
-  build:
-    - python
-    - pip
-    - setuptools >=61.0
-    - wheel
   host:
     - python
+  build:
     - pip
     - setuptools >=61.0
     - wheel
   run:
-    - python
     - robotframework
     - jupyter_client
     - docutils
     - xeus-cpp >={{ xeus_cpp_version }}
-    - clang >={{ clang_major_version }},<{{ clang_major_version|int + 1 }}.0a0
-    - libcxx =={{ clang_major_version }}.*  # [not win]
+    - {{ compiler('c') }}
+    - {{ stdlib('c') }}
+    - {{ compiler('cxx') }}
+    - {{ stdlib('cxx') }}   # [not linux]
+    - libcxx =={{ clang_major_version }}.*   # [linux]
+    - libcxx-devel =={{ clang_major_version }}.*   # [linux]
 
 test:
   source_files:
     - docs
-  requires:
-    - python
-    - ipykernel
-    - robotframework
-    - docutils
-    - xeus-cpp >={{ xeus_cpp_version }}
-    - {{ compiler('c') }}
-    - {{ compiler('cxx') }}
   commands:
+    - export LD_PRELOAD="$PREFIX/lib/libc++.so.1" # [linux]
     - robot --extension rst docs/tests.rst
 
 about:

@@ -126,6 +126,8 @@ class clang:
                     "-fms-extensions", 
                     "-fms-compatibility", 
                     "-fdelayed-template-parsing",
+                    "-fexceptions",
+                    "-fcxx-exceptions",
                     "-std=c++20"
                 ])
             else:
@@ -160,21 +162,30 @@ class clang:
             self._stop_kernel()
             raise RuntimeError(f"Failed to load standard headers: {e}")
 
+        if sys.platform == 'win32':
+             # --- WINDOWS PRE-LOAD ---
+             # Pre-load MSVC Runtime libraries to ensure symbols are available
+             # before defining helpers that depend on them (like std::string).
+             win_preload = r"""
+             struct _WinRuntimePreloader {
+                 _WinRuntimePreloader() {
+                     LoadLibrary("vcruntime140.dll");
+                     LoadLibrary("vcruntime140_1.dll");
+                     LoadLibrary("msvcp140.dll");
+                 }
+             };
+             static _WinRuntimePreloader _preloader_instance;
+             """
+             try:
+                 self.source_exec(win_preload, timeout=30)
+             except Exception as e:
+                 print(f"*WARN* Failed to preload MSVC runtimes: {e}")
+
         cpp_helpers = ""
         
         if sys.platform == 'win32':
             # --- WINDOWS IMPLEMENTATION ---
             cpp_helpers = r"""
-            // Force load MSVC Runtime libraries into the JIT process space
-            struct _WinRuntimeLoader {
-                _WinRuntimeLoader() {
-                    LoadLibrary("vcruntime140.dll");
-                    LoadLibrary("vcruntime140_1.dll"); // Often needed for exception handling
-                    LoadLibrary("msvcp140.dll");       // Contains iostream, locale, etc.
-                }
-            };
-            static _WinRuntimeLoader _loader_instance;
-
             void* _robot_load_lib(const char* path) {
                 std::string p = path;
                 for (auto &c : p) if (c == '/') c = '\\';

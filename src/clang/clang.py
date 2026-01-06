@@ -133,9 +133,9 @@ class clang:
                 # Explicitly link against MSVC and UCRT runtimes
                 # This ensures symbols like std::string, std::cout, type_info are found.
                 extra_args.extend([
-                    "/DEFAULTLIB:msvcp140.lib",
-                    "/DEFAULTLIB:vcruntime140.lib",
-                    "/DEFAULTLIB:ucrt.lib",
+                    "-lmsvcp140",                                                                                                                                                                            │
+                    "-lvcruntime140",                                                                                                                                                                        │
+                    "-lucrt", 
                     "-fms-extensions", 
                     "-fms-compatibility", 
                     "-fdelayed-template-parsing",

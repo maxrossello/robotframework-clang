@@ -37,8 +37,6 @@ requirements:
     - clangdev      # [linux]
     - libcxx        # [linux]
     - libcxx-devel  # [linux]
-    #- libcxx =={{ clang_major_version }}.*  # [linux]
-    #- libcxx-devel =={{ clang_major_version }}.*  # [linux]
 
 test:
   source_files:

@@ -122,7 +122,20 @@ class clang:
             self.km = KernelManager(kernel_name=kernel_name)
             extra_args = []
             if sys.platform == 'win32':
+                # Configure Windows Linking
+                # We need to tell Clang-REPL where to find the standard libraries.
+                # In a Conda environment, these are in <prefix>/Library/lib.
+                if sys.prefix:
+                    lib_path = os.path.join(sys.prefix, 'Library', 'lib')
+                    if os.path.exists(lib_path):
+                        extra_args.append(f'-L{lib_path}')
+                
+                # Explicitly link against MSVC and UCRT runtimes
+                # This ensures symbols like std::string, std::cout, type_info are found.
                 extra_args.extend([
+                    "-lmsvcp140",
+                    "-lvcruntime140",
+                    "-lucrt", 
                     "-fms-extensions", 
                     "-fms-compatibility", 
                     "-fdelayed-template-parsing",
@@ -161,25 +174,6 @@ class clang:
         except Exception as e:
             self._stop_kernel()
             raise RuntimeError(f"Failed to load standard headers: {e}")
-
-        if sys.platform == 'win32':
-             # --- WINDOWS PRE-LOAD ---
-             # Pre-load MSVC Runtime libraries to ensure symbols are available
-             # before defining helpers that depend on them (like std::string).
-             win_preload = r"""
-             struct _WinRuntimePreloader {
-                 _WinRuntimePreloader() {
-                     LoadLibrary("vcruntime140.dll");
-                     LoadLibrary("vcruntime140_1.dll");
-                     LoadLibrary("msvcp140.dll");
-                 }
-             };
-             static _WinRuntimePreloader _preloader_instance;
-             """
-             try:
-                 self.source_exec(win_preload, timeout=30)
-             except Exception as e:
-                 print(f"*WARN* Failed to preload MSVC runtimes: {e}")
 
         cpp_helpers = ""
         

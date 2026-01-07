@@ -125,46 +125,47 @@ class clang:
                 # Configure Windows Linking
                 # We need to tell Clang-REPL where to find the standard libraries.
                 # In a Conda environment, these are in <prefix>/Library/lib.
-                                if sys.prefix:
-                                    lib_path = os.path.join(sys.prefix, 'Library', 'lib')
-                                    if os.path.exists(lib_path):
-                                        extra_args.append(f'-L{lib_path}')
-                                
-                                # Debugging: Check library existence
-                                print(f"DEBUG: sys.prefix is {sys.prefix}")
-                                lib_paths_from_env = os.environ.get('LIB', '').split(os.pathsep)
-                                print(f"DEBUG: LIB environment variable: {os.environ.get('LIB', 'Not set')}")
-                                
-                                required_libs = ["msvcp140.lib", "vcruntime140.lib", "ucrt.lib"]
-                                found_all_libs = True
-                                for lib_name in required_libs:
-                                    found_lib = False
-                                    for path in lib_paths_from_env:
-                                        full_path = os.path.join(path, lib_name)
-                                        if os.path.exists(full_path):
-                                            print(f"DEBUG: Found {lib_name} at {full_path}")
-                                            found_lib = True
-                                            break
-                                    if not found_lib:
-                                        print(f"DEBUG: WARNING: {lib_name} not found in LIB paths.")
-                                        found_all_libs = False
-                                
-                                if not found_all_libs:
-                                    print("DEBUG: Some required libraries were not found. This might be the cause of linking errors.")
-                                
-                                # Explicitly link against MSVC and UCRT runtimes
-                                # This ensures symbols like std::string, std::cout, type_info are found.
-                                extra_args.extend([
-                                    "msvcp140.lib",
-                                    "vcruntime140.lib",
-                                    "ucrt.lib", 
-                                    "-fms-extensions", 
-                                    "-fms-compatibility", 
-                                    "-fdelayed-template-parsing",
-                                    "-fexceptions",
-                                    "-fcxx-exceptions",
-                                    "-std=c++20"
-                                ])            else:
+                if sys.prefix:
+                    lib_path = os.path.join(sys.prefix, 'Library', 'lib')
+                    if os.path.exists(lib_path):
+                        extra_args.append(f'-L{lib_path}')
+                
+                # Debugging: Check library existence
+                print(f"DEBUG: sys.prefix is {sys.prefix}")
+                lib_paths_from_env = os.environ.get('LIB', '').split(os.pathsep)
+                print(f"DEBUG: LIB environment variable: {os.environ.get('LIB', 'Not set')}")
+                
+                required_libs = ["msvcp140.lib", "vcruntime140.lib", "ucrt.lib"]
+                found_all_libs = True
+                for lib_name in required_libs:
+                    found_lib = False
+                    for path in lib_paths_from_env:
+                        full_path = os.path.join(path, lib_name)
+                        if os.path.exists(full_path):
+                            print(f"DEBUG: Found {lib_name} at {full_path}")
+                            found_lib = True
+                            break
+                    if not found_lib:
+                        print(f"DEBUG: WARNING: {lib_name} not found in LIB paths.")
+                        found_all_libs = False
+                
+                if not found_all_libs:
+                    print("DEBUG: Some required libraries were not found. This might be the cause of linking errors.")
+                
+                # Explicitly link against MSVC and UCRT runtimes
+                # This ensures symbols like std::string, std::cout, type_info are found.
+                extra_args.extend([
+                    "msvcp140.lib",
+                    "vcruntime140.lib",
+                    "ucrt.lib", 
+                    "-fms-extensions", 
+                    "-fms-compatibility", 
+                    "-fdelayed-template-parsing",
+                    "-fexceptions",
+                    "-fcxx-exceptions",
+                    "-std=c++20"
+                ])
+            else:
                 extra_args.extend(["-stdlib=libc++", "-std=c++20"])
                             
             self.km.start_kernel(stderr=subprocess.DEVNULL, extra_arguments=extra_args)

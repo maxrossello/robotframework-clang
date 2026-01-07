@@ -129,37 +129,51 @@ class clang:
                     lib_path = os.path.join(sys.prefix, 'Library', 'lib')
                     if os.path.exists(lib_path):
                         extra_args.append(f'-L{lib_path}')
-                
+
                 # Debugging: Check library existence
                 print(f"DEBUG: sys.prefix is {sys.prefix}")
                 lib_paths_from_env = os.environ.get('LIB', '').split(os.pathsep)
                 print(f"DEBUG: LIB environment variable: {os.environ.get('LIB', 'Not set')}")
                 
                 required_libs = ["msvcp140.lib", "vcruntime140.lib", "ucrt.lib"]
-                found_all_libs = True
+                
+                # Check conda env lib path first
+                conda_lib_path = os.path.join(sys.prefix, 'Library', 'lib')
+                print(f"DEBUG: Checking conda lib path: {conda_lib_path}")
+                if os.path.exists(conda_lib_path):
+                    for lib_name in required_libs:
+                        full_path = os.path.join(conda_lib_path, lib_name)
+                        if os.path.exists(full_path):
+                            print(f"DEBUG: Found {lib_name} at {full_path}")
+                        else:
+                            print(f"DEBUG: WARNING: {lib_name} not found in {conda_lib_path}")
+
+                # Check paths from LIB env var
+                found_all_libs_in_lib = True
                 for lib_name in required_libs:
                     found_lib = False
                     for path in lib_paths_from_env:
+                        if not path: continue
                         full_path = os.path.join(path, lib_name)
                         if os.path.exists(full_path):
-                            print(f"DEBUG: Found {lib_name} at {full_path}")
+                            print(f"DEBUG: Found {lib_name} at {full_path} (from LIB env var)")
                             found_lib = True
                             break
                     if not found_lib:
-                        print(f"DEBUG: WARNING: {lib_name} not found in LIB paths.")
-                        found_all_libs = False
+                        print(f"DEBUG: WARNING: {lib_name} not found in any LIB path.")
+                        found_all_libs_in_lib = False
                 
-                if not found_all_libs:
-                    print("DEBUG: Some required libraries were not found. This might be the cause of linking errors.")
-                
+                if not found_all_libs_in_lib:
+                    print("DEBUG: Some required libraries were not found in LIB env var. This might be the cause of linking errors.")
+
                 # Explicitly link against MSVC and UCRT runtimes
                 # This ensures symbols like std::string, std::cout, type_info are found.
                 extra_args.extend([
-                    "msvcp140.lib",
-                    "vcruntime140.lib",
-                    "ucrt.lib", 
-                    "-fms-extensions", 
-                    "-fms-compatibility", 
+                    "-lmsvcp140",
+                    "-lvcruntime140",
+                    "-lucrt",
+                    "-fms-extensions",
+                    "-fms-compatibility",
                     "-fdelayed-template-parsing",
                     "-fexceptions",
                     "-fcxx-exceptions",

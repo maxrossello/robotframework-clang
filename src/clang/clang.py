@@ -135,7 +135,7 @@ class clang:
                 lib_paths_from_env = os.environ.get('LIB', '').split(os.pathsep)
                 print(f"DEBUG: LIB environment variable: {os.environ.get('LIB', 'Not set')}")
                 
-                required_libs = ["msvcp140.lib", "vcruntime140.lib", "ucrt.lib"]
+                required_libs = ["msvcp140.lib", "vcruntime140.lib", "ucrt.lib", "msvcprt.lib", "msvcrt.lib"]
                 
                 # Check conda env lib path first
                 conda_lib_path = os.path.join(sys.prefix, 'Library', 'lib')
@@ -172,6 +172,8 @@ class clang:
                     "-lmsvcp140",
                     "-lvcruntime140",
                     "-lucrt",
+                    "-lmsvcprt",
+                    "-lmsvcrt",
                     "-fms-extensions",
                     "-fms-compatibility",
                     "-fdelayed-template-parsing",

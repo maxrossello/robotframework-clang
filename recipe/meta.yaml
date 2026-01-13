@@ -18,8 +18,10 @@ build:
 
 requirements:
   build:
-    - clang
-    - clangxx
+    - {{ compiler('c') }}      # [win]
+    - {{ compiler('cxx') }}    # [win]
+    - clang {{ clang_major_version }}.*
+    - clangxx {{ clang_major_version }}.*
   host:
     - python
     - pip
@@ -31,9 +33,8 @@ requirements:
     - jupyter_client
     - docutils
     - xeus-cpp >={{ xeus_cpp_version }}
-    - clang
-    - clangxx
-    - {{ stdlib('c') }}
+    - clang {{ clang_major_version }}.*
+    - clangxx {{ clang_major_version }}.*
     - clangdev      # [linux]
     - libcxx        # [linux]
     - libcxx-devel  # [linux]

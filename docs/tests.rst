@@ -193,9 +193,17 @@ We can also load compiled shared libraries (.so/.dylib/dll) into the running ker
     
     Run Windows Compile
         [Arguments]    ${cmd}    ${src}    ${out}
-        # Assume clang-cl or compatible gcc syntax
-        Log to console     \n${cmd} -DEXPORT="__declspec(dllexport)" -shared -o ${out} ${src}
-        ${rc}    ${output}=    Run And Return Rc And Output    ${cmd} -DEXPORT="__declspec(dllexport)" -shared -o ${out} ${src}
+        # Check if we are using cl.exe (MSVC) or clang-cl
+        ${is_msvc}=    Evaluate    'cl' in '${cmd}'.lower()
+        IF    ${is_msvc}
+            ${compile_cmd}=    Set Variable    ${cmd} -DEXPORT="__declspec(dllexport)" /LD /Fe${out} ${src}
+        ELSE
+            # Assume clang-cl or compatible gcc syntax
+            ${compile_cmd}=    Set Variable    ${cmd} -DEXPORT="__declspec(dllexport)" -shared -o ${out} ${src}
+        END
+        Log to console     \nExecuting: ${compile_cmd}
+        ${rc}    ${output}=    Run And Return Rc And Output    ${compile_cmd}
+        Log to console     Output: ${output}
         Should Be Equal As Integers    ${rc}    0
     
     *** Test Cases ***

@@ -218,6 +218,7 @@ class clang:
         if sys.platform == 'win32':
             # --- WINDOWS IMPLEMENTATION ---
             cpp_helpers = r"""
+            #include <windows.h>
             void* _robot_load_lib(const char* path) {
                 std::string p = path;
                 for (auto &c : p) if (c == '/') c = '\\';
@@ -232,6 +233,14 @@ class clang:
             std::string _robot_demangle(const char* name) {
                 return std::string(name);
             }
+            // Force load MSVC runtimes to make symbols available to JIT
+            struct _WinRuntimeLoader {
+                _WinRuntimeLoader() {
+                    LoadLibrary("msvcp140.dll");
+                    LoadLibrary("vcruntime140.dll");
+                    LoadLibrary("ucrtbase.dll");
+                }
+            } _robot_runtime_loader;
             """
         else:
             # --- LINUX/MAC IMPLEMENTATION ---

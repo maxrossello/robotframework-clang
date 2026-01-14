@@ -20,6 +20,7 @@ requirements:
   build:
     - {{ compiler('c') }}      # [win]
     - {{ compiler('cxx') }}    # [win]
+    - {{ stdlib("c") }}        # [win]
     - clang {{ clang_major_version }}.*
     - clangxx {{ clang_major_version }}.*
   host:

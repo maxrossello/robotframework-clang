@@ -194,7 +194,9 @@ We can also load compiled shared libraries (.so/.dylib/dll) into the running ker
     Run Windows Compile
         [Arguments]    ${cmd}    ${src}    ${out}
         # Check if we are using cl.exe (MSVC) or clang-cl
-        ${is_msvc}=    Evaluate    'cl' in '${cmd}'.lower()
+        # 'cl' in 'clang++' is True, so we need stricter check
+        ${cmd_lower}=    Evaluate    '${cmd}'.lower()
+        ${is_msvc}=    Evaluate    any(x == $cmd_lower for x in ['cl', 'cl.exe', 'clang-cl', 'clang-cl.exe'])
         IF    ${is_msvc}
             ${compile_cmd}=    Set Variable    ${cmd} -DEXPORT="__declspec(dllexport)" /LD /Fe${out} ${src}
         ELSE

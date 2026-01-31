@@ -4,11 +4,11 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "robotframework-clang"
-version = "0.1.2"
+version = "0.2.0"
 description = "Robot Framework library for Clang-REPL execution via xeus-cpp"
 readme = "README.md"
 authors = [
-  { name = "Massimo Rossello" },
+  { name = "Massimo Rossello", email = "ajbum6g7q@mozmail.com" },
 ]
 license = "Apache-2.0"
 classifiers = [
@@ -20,7 +20,7 @@ dependencies = [
     "jupyter_client",
     "docutils"
 ]
-requires-python = ">=3.8"
+requires-python = ">=3.10"
 
 [project.optional-dependencies]
 docs = [
@@ -31,3 +31,61 @@ docs = [
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+# --- PIXI CONFIGURATION ---
+
+[tool.pixi.workspace]
+channels = ["conda-forge"]
+platforms = ["win-64", "linux-64", "osx-64", "osx-arm64"]
+
+[tool.pixi.environments]
+linux = { features = [], solve-group = "default" }
+windows = { features = [], solve-group = "default" }
+default = { features = [], solve-group = "default" }
+
+[tool.pixi.dependencies]
+python = ">=3.10"
+pip = "*"
+xeus-cpp = ">=0.8.0"
+# Clang 20 (C++20 compatible and supported by xeus-cpp 0.8.0)
+clang = ">=20,<21"
+clangxx = ">=20,<21"
+# Project dependencies
+robotframework = "*"
+jupyter_client = "*"
+docutils = "*"
+# Build and Tooling
+rattler-build = "*"
+# Documentation
+sphinx = "*"
+sphinx_rtd_theme = "*"
+myst-parser = "*"
+
+[tool.pixi.target.win-64.dependencies]
+# On Windows, try to get headers via libcxx if available, 
+# or ensure standard Windows runtimes are present.
+libcxx = "*"
+vc14_runtime = "*"
+ucrt = "*"
+
+[tool.pixi.tasks]
+# Editable installation
+install = "pip install -e . --no-deps"
+
+# Documentation generation
+docs = { cmd = "python utils/libdoc2rst.py && sphinx-build -b html docs html", depends-on = ["install"] }
+
+# Test (uses PYTHONPATH as fallback if not installed, but prefers installation)
+test = { cmd = "robot --extension rst docs", env = { PYTHONPATH = "src" } }
+
+# Build Conda package via rattler-build
+build-recipe = "rattler-build build --recipe recipe/recipe.yaml"
+
+# Build PyPI package
+build-pypi = "pip install build && python -m build"
+
+# Deploy to PyPI
+deploy-pypi = { cmd = "pip install twine && twine upload dist/*", depends-on = ["build-pypi"] }
+
+# Full cleanup (same as Makefile)
+clean = "python -c 'import shutil, os, glob; shutil.rmtree(\"html\", ignore_errors=True); shutil.rmtree(\"docs/_build\", ignore_errors=True); [os.remove(f) for f in [\"output.xml\", \"log.html\", \"report.html\"] if os.path.exists(f)]; [shutil.rmtree(egg) for egg in glob.glob(\"src/*.egg-info\")]; [shutil.rmtree(os.path.join(r, d)) for r, ds, fs in os.walk(\".\", topdown=False) for d in ds if d == \"__pycache__\"]'"

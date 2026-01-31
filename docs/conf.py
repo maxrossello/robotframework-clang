@@ -22,9 +22,9 @@ project = 'robotframework-clang'
 copyright = '2025- Massimo Rossello'
 author = 'Massimo Rossello'
 # The full version, including alpha/beta/rc tags
-release = '0.1.2'
+release = '0.2.0'
 # The short X.Y version
-version = '0.1.2'
+version = '0.2.0'
 root_doc = 'index'
 
 templates_path = ['_templates']

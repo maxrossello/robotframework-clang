@@ -1,3 +1,5 @@
 sphinx>=7.0
 sphinx-rtd-theme
 myst-parser
+robotframework
+jupyter_client

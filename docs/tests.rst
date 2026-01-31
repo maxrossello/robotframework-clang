@@ -14,6 +14,7 @@ We also use `OperatingSystem` to create temporary header files for testing inclu
     *** Settings ***
     Library    clang
     Library    OperatingSystem
+    Library    Process
     
     Test Setup       Start Kernel
     Test Teardown    Shutdown Kernel
@@ -61,6 +62,36 @@ Use `Source Parse` to define classes, structs, or functions without producing ou
         # Verify usage
         ${res}=    Source Exec    std::cout << add(10, 20);
         Should Be Equal    ${res}    30
+
+Source From File
+----------------
+
+You can also load C++ code directly from a file using `Source File`.
+
+.. code:: robotframework
+
+    *** Test Cases ***
+    Load C++ File
+        [Documentation]    Creates a temporary C++ file and loads it into the kernel.
+        [Setup]    None
+        
+        ${temp_dir}=    Join Path    ${OUTPUT DIR}    source_file_test
+        Create Directory    ${temp_dir}
+        ${cpp_path}=    Join Path    ${temp_dir}    mylogic.cpp
+        
+        # Define a function in the file
+        Create File    ${cpp_path}    int subtract(int a, int b) { return a - b; }
+        
+        Start Kernel
+        
+        # Load the file
+        Source File    ${cpp_path}
+        
+        # Call the function defined in the file
+        ${res}=    Source Exec    std::cout << subtract(100, 40);
+        Should Be Equal    ${res}    60
+        
+        [Teardown]    Run Keywords    Shutdown Kernel    AND    Remove Directory    ${temp_dir}    recursive=True
 
 Function Calls
 --------------
@@ -119,7 +150,8 @@ The library provides helpers to identify C++ types, which is useful given the la
     Check Type Identification
         [Documentation]    Verifies Typeid and Typename keywords.
         ${id}=    Typeid    42
-        Should Be Equal    ${id}    i
+        # On Linux/Itanium it's 'i', on Windows/MSVC it's 'int'
+        Should Match Regexp    ${id}    ^(i|int)$
         ${name}=    Typename    std::string("hello")
         Should Contain    ${name}    string
 
@@ -187,26 +219,24 @@ We can also load compiled shared libraries (.so/.dylib/dll) into the running ker
         ELSE
             ${shlib_flag}=    Set Variable    -shared
         END
-        Log to console    \n${cmd} ${flags} ${shlib_flag} -DEXPORT="" -fPIC -fvisibility=default ${ldflags} -o ${out} ${src}
-        ${rc}    ${output}=    Run And Return Rc And Output    ${cmd} ${flags} ${shlib_flag} -DEXPORT="" -fPIC -fvisibility=default ${ldflags} -o ${out} ${src}
-        Should Be Equal As Integers    ${rc}    0
+        ${result}=    Run Process    ${cmd}    ${flags}    ${shlib_flag}    -DEXPORT\=    -fPIC    -fvisibility\=default    ${ldflags}    -o    ${out}    ${src}
+        Should Be Equal As Integers    ${result.rc}    0
     
     Run Windows Compile
         [Arguments]    ${cmd}    ${src}    ${out}
-        # Check if we are using cl.exe (MSVC) or clang-cl
-        # 'cl' in 'clang++' is True, so we need stricter check
-        ${cmd_lower}=    Evaluate    '${cmd}'.lower()
-        ${is_msvc}=    Evaluate    any(x == $cmd_lower for x in ['cl', 'cl.exe', 'clang-cl', 'clang-cl.exe'])
+        # Use Process library to avoid cmd.exe UNC path limitations
+        ${cmd_lower}=    Evaluate    '${cmd}'.lower().replace('.exe', '')
+        # Check if it's strictly cl or clang-cl (which use MSVC flags)
+        ${is_msvc}=    Evaluate    '${cmd_lower}'.endswith('cl')
+        
         IF    ${is_msvc}
-            ${compile_cmd}=    Set Variable    ${cmd} -DEXPORT="__declspec(dllexport)" /LD /Fe${out} ${src}
+            ${result}=    Run Process    ${cmd}    -DEXPORT\=__declspec(dllexport)    /LD    /Fe${out}    ${src}
         ELSE
-            # Assume clang-cl or compatible gcc syntax
-            ${compile_cmd}=    Set Variable    ${cmd} -DEXPORT="__declspec(dllexport)" -shared -o ${out} ${src}
+            # Assume clang++ or compatible driver
+            ${result}=    Run Process    ${cmd}    -DEXPORT\=__declspec(dllexport)    -shared    -o    ${out}    ${src}
         END
-        Log to console     \nExecuting: ${compile_cmd}
-        ${rc}    ${output}=    Run And Return Rc And Output    ${compile_cmd}
-        Log to console     Output: ${output}
-        Should Be Equal As Integers    ${rc}    0
+        
+        Should Be Equal As Integers    ${result.rc}    0
     
     *** Test Cases ***
     Load Shared Library Test
@@ -227,9 +257,6 @@ We can also load compiled shared libraries (.so/.dylib/dll) into the running ker
         ${cxx}=         Get Environment Variable    CXX         clang++
         ${cxxflags}=    Get Environment Variable    CXXFLAGS    ${EMPTY}
         ${ldflags}=     Get Environment Variable    LDFLAGS     ${EMPTY}
-        Log to console     \ncxx=${cxx}
-        Log to console     cxxflags=${cxxflags}
-        Log to console     ldflags=${ldflags}
         
         IF    ${is_windows}
             Run Windows Compile    ${cxx}    ${src_path}    ${lib_path}
@@ -259,7 +286,7 @@ We can also load compiled shared libraries (.so/.dylib/dll) into the running ker
         # Name must start with 'lib' for -l to work
         ${lib_path}=     Join Path    ${temp_dir}    libmylink.${ext}
         
-        Create File    ${src_path}    extern "C" int link_func() { return 456; }
+        Create File    ${src_path}    extern "C" EXPORT int link_func() { return 456; }
 
         ${cxx}=         Get Environment Variable    CXX         clang++
         ${cxxflags}=    Get Environment Variable    CXXFLAGS    ${EMPTY}

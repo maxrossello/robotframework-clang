@@ -12,33 +12,14 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: Setup Mamba Environment
-      uses: mamba-org/setup-micromamba@v1
+    - name: Setup Pixi
+      uses: prefix-dev/setup-pixi@v0.8.1
       with:
-        environment-name: ci-env
-        create-args: >-
-          python=3.12
-          robotframework
-          jupyter_client
-          docutils
-          xeus-cpp=0.8.0
-          clang=20
-          libcxx
-          sphinx
-          sphinx_rtd_theme
-          myst-parser
-        condarc: |
-          channels:
-            - conda-forge
-
-    - name: Install Library
-      shell: bash -l {0}
-      run: pip install .
+        pixi-version: latest
+        cache: true
 
     - name: Run Tests
-      shell: bash -l {0}
-      run: make tests
+      run: pixi run test
 
     - name: Build Documentation
-      shell: bash -l {0}
-      run: make docs
+      run: pixi run docs

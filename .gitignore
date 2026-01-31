@@ -58,3 +58,4 @@ cover/
 .project
 .pydevproject
 html/
+output/

@@ -115,7 +115,7 @@ Basically executes ``std::cout << (expression)`` and returns the result.
 
 **Arguments:**
 
-- ``obj_expression``: The C++ variable or expression to evaluate.
+- ``obj_expressionencode``: The C++ variable or expression to evaluate.
 
 **Example:**
 
@@ -196,6 +196,22 @@ If the code throws an exception or fails to compile, the test fails.
 **Example:**
 
 | ${out}= | Source Exec | std::cout << "Hello"; |
+
+
+Source File
+-----------
+
+**Arguments:** ``path``
+
+Reads a C++ source file and executes its content in the REPL.
+
+**Arguments:**
+
+- ``path``: Path to the C++ source file (.cpp, .h, etc.).
+
+**Example:**
+
+| Source File | ${CURDIR}/my_impl.cpp |
 
 
 Source Include

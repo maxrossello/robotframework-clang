@@ -45,17 +45,22 @@ Here is why:
 
 ## Installation
 
-### Using Conda (Recommended)
+### Using Pixi (Recommended)
 
-Installation via Conda is the preferred method as it automatically manages binary dependencies for the compiler and the JIT kernel.
+Installation via [Pixi](https://pixi.sh) is the preferred method as it automatically manages all binary dependencies (Clang, xeus-cpp, libcxx) and Python requirements in a reproducible environment.
 
 ```bash
-conda install -c conda-forge robotframework-clang
+# To use it in your project
+pixi add robotframework-clang
+
+# Or to run tests/build within this repository
+pixi run test
+pixi run build-recipe
 ```
 
 ### Using Pip
 
-If you already have an environment with `xeus-cpp` installed and configured:
+If you already have an environment with `xeus-cpp` and **Clang 20** installed and configured:
 
 ```bash
 pip install robotframework-clang
@@ -70,22 +75,18 @@ This project uses an "executable documentation" approach. Tests are written in r
 To execute the tests (which are embedded in the documentation):
 
 ```bash
-make tests
+pixi run test
 ```
 
 ### Building Documentation
 
-To generate the HTML documentation (requires Sphinx and sphinx-rtd-theme):
+To generate the HTML documentation:
 
 ```bash
-# Install documentation requirements
-pip install .[docs]
-
-# Build the docs
-make docs
+pixi run docs
 ```
 
-The output will be available in html/index.html.
+The output will be available in `html/index.html`.
 
 ## License
 

@@ -183,7 +183,7 @@ class clang:
 
         try:
             self.km = KernelManager(kernel_name=kernel_name)
-            extra_args = []
+            extra_args = ["-std=c++20"]
             if sys.platform == 'win32':
                 # Configure Windows Linking and Preprocessor
                 extra_args.extend([
@@ -199,16 +199,13 @@ class clang:
                     "-lmsvcprt",
                     "-lmsvcrt",
                     "-lvcruntime",
-                    "-lucrt",
-                    "-std=c++20"
+                    "-lucrt"
                 ])
                 # Add discovered lib paths
                 for lp in discovered_libs + [os.path.join(prefix, 'Library', 'lib') if prefix else None]:
                     if lp and os.path.exists(lp):
                         lp_fixed = lp.replace("\\", "/")
                         extra_args.append(f'-L{lp_fixed}')
-            else:
-                extra_args.extend(["-stdlib=libc++", "-std=c++20"])
                             
             self.km.start_kernel(stderr=subprocess.DEVNULL, extra_arguments=extra_args)
         except Exception as e:

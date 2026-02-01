@@ -197,7 +197,8 @@ class clang:
                 # Add discovered lib paths
                 for lp in discovered_libs + [os.path.join(prefix, 'Library', 'lib') if prefix else None]:
                     if lp and os.path.exists(lp):
-                        extra_args.append(f'-L{lp.replace("\\", "/")}')
+                        lp_fixed = lp.replace("\\", "/")
+                        extra_args.append(f'-L{lp_fixed}')
             else:
                 extra_args.extend(["-stdlib=libc++", "-std=c++20"])
                             

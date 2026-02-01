@@ -1,6 +1,6 @@
 context:
   name: robotframework-clang
-  version: "0.2.0"
+  version: "0.2.1"
   xeus_cpp_version: "0.8.0"
   clang_major: "20"
 
@@ -20,8 +20,6 @@ requirements:
     - ${{ compiler('c') }}
     - ${{ compiler('cxx') }}
     # - ${{ stdlib("c") }} # Uncomment for conda-forge submission
-    - clang ${{ clang_major }}.*
-    - clangxx ${{ clang_major }}.*
   host:
     - python
     - pip

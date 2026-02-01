@@ -1,6 +1,6 @@
 context:
   name: robotframework-clang
-  version: "0.2.2"
+  version: "0.2.3"
   xeus_cpp_version: "0.8.0"
   clang_major: "20"
 
@@ -20,8 +20,10 @@ requirements:
     - ${{ compiler('c') }}
     - ${{ compiler('cxx') }}
     # - ${{ stdlib("c") }} # Uncomment ONLY for conda-forge submission (causes 'undefined' locally)
-    - clang ${{ clang_major }}.*  # [linux]
-    - clangxx ${{ clang_major }}.* # [linux]
+    - if: linux or win
+      then:
+        - clang ${{ clang_major }}.*
+        - clangxx ${{ clang_major }}.*
   host:
     - python
     - pip
@@ -35,7 +37,6 @@ requirements:
     - xeus-cpp >=${{ xeus_cpp_version }}
     - clang ${{ clang_major }}.*
     - clangxx ${{ clang_major }}.*
-    - libcxx # [linux]
 
 tests:
   - script:
@@ -47,8 +48,10 @@ tests:
     requirements:
       run:
         - robotframework
-        - clang ${{ clang_major }}.* # [win]
-        - clangxx ${{ clang_major }}.* # [win]
+        - if: win
+          then:
+            - clang ${{ clang_major }}.*
+            - clangxx ${{ clang_major }}.*
 
 about:
   homepage: https://github.com/maxrossello/robotframework-clang

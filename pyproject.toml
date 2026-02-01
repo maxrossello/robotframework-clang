@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "robotframework-clang"
-version = "0.2.2"
+version = "0.2.3"
 description = "Robot Framework library for Clang-REPL execution via xeus-cpp"
 readme = "README.md"
 authors = [
@@ -20,7 +20,7 @@ dependencies = [
     "jupyter_client",
     "docutils"
 ]
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 
 [project.optional-dependencies]
 docs = [
@@ -44,7 +44,7 @@ windows = { features = [], solve-group = "default" }
 default = { features = [], solve-group = "default" }
 
 [tool.pixi.dependencies]
-python = ">=3.10"
+python = ">=3.12"
 pip = "*"
 xeus-cpp = ">=0.8.0"
 # Clang 20 (C++20 compatible and supported by xeus-cpp 0.8.0)
@@ -62,9 +62,7 @@ sphinx_rtd_theme = "*"
 myst-parser = "*"
 
 [tool.pixi.target.win-64.dependencies]
-# On Windows, try to get headers via libcxx if available, 
-# or ensure standard Windows runtimes are present.
-libcxx = "*"
+# Ensure standard Windows runtimes are present.
 vc14_runtime = "*"
 ucrt = "*"
 

@@ -190,8 +190,21 @@ class clang:
 
         common_headers = ['#include <iostream>', '#include <string>', '#include <stdexcept>', '#include <vector>', '#include <memory>', '#include <typeinfo>', '#include <cstdlib>']
         if sys.platform != 'win32': common_headers.extend(['#include <dlfcn.h>', '#include <cxxabi.h>'])
-        try: self.source_exec('\n'.join(common_headers), timeout=60)
-        except Exception as e: self._stop_kernel(); raise RuntimeError(f"Failed to load standard headers: {e}")
+        
+        for header in common_headers:
+            try:
+                # Load each header individually to pinpoint the failure
+                self.source_exec(header, timeout=20)
+            except Exception as e:
+                if sys.platform == 'win32':
+                    print(f"*WARN* Failed to load {header}: {e}")
+                    # On Windows, we might continue if it's not iostream
+                    if '<iostream>' in header: 
+                        self._stop_kernel()
+                        raise RuntimeError(f"Critical header failed: {header}")
+                else:
+                    self._stop_kernel()
+                    raise RuntimeError(f"Failed to load standard header {header}: {e}")
 
         if sys.platform == 'win32':
             cpp_helpers = r"""

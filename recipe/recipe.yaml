@@ -4,7 +4,7 @@ context:
   xeus_cpp_version: "0.8.0"
   clang_major: "20"
   is_local: ${{ env.get("CI") == "false" }}
-  sha256: "bb0df03d78341f60f163353532c9b25c4848cb3607a271b9abe75fae91f2fc6e"
+  sha256: "2f843cae0a8a7d33a684f106fe98e33c4ab640590326fe0fc24d8bbdbd5d65bc"
 
 package:
   name: ${{ name }}

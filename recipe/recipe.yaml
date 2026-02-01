@@ -19,6 +19,7 @@ requirements:
   build:
     - ${{ compiler('c') }}
     - ${{ compiler('cxx') }}
+    # - ${{ stdlib("c") }} # Uncomment for conda-forge submission
     - clang ${{ clang_major }}.*
     - clangxx ${{ clang_major }}.*
   host:
@@ -45,3 +46,18 @@ tests:
     requirements:
       run:
         - robotframework
+
+about:
+  homepage: https://github.com/maxrossello/robotframework-clang
+  license: Apache-2.0
+  license_file: LICENSE
+  summary: Robot Framework library for Clang-REPL execution via xeus-cpp
+  description: |
+    robotframework-clang is a Robot Framework library designed to execute 
+    and test C++ code interactively using Clang-REPL (via the xeus-cpp extension).
+    It allows for JIT compilation, state persistence across tests, and full 
+    support for modern C++ features.
+
+extra:
+  recipe-maintainers:
+    - maxrossello

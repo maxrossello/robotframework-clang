@@ -87,5 +87,8 @@ build-pypi = "pip install build && python -m build"
 # Deploy to PyPI
 deploy-pypi = { cmd = "pip install twine && twine upload dist/*", depends-on = ["build-pypi"] }
 
+# Calculate SHA256 for conda-forge recipe (from GitHub tag)
+get-sha = "VERSION=$(grep -m 1 'version =' pyproject.toml | tr -d '\" ' | cut -d= -f2) && TAG=\"rf-clang-$VERSION\" && URL=\"https://github.com/maxrossello/robotframework-clang/archive/refs/tags/$TAG.tar.gz\" && echo -e \"\n📋 Copy into recipe.yaml:\n\nsource:\n  url: $URL\n  sha256: $(curl -L -s $URL | sha256sum | cut -d' ' -f1)\""
+
 # Full cleanup (same as Makefile)
 clean = "python -c 'import shutil, os, glob; shutil.rmtree(\"html\", ignore_errors=True); shutil.rmtree(\"docs/_build\", ignore_errors=True); [os.remove(f) for f in [\"output.xml\", \"log.html\", \"report.html\"] if os.path.exists(f)]; [shutil.rmtree(egg) for egg in glob.glob(\"src/*.egg-info\")]; [shutil.rmtree(os.path.join(r, d)) for r, ds, fs in os.walk(\".\", topdown=False) for d in ds if d == \"__pycache__\"]'"

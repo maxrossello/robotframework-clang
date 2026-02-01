@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "robotframework-clang"
-version = "0.2.3"
+version = "0.2.4"
 description = "Robot Framework library for Clang-REPL execution via xeus-cpp"
 readme = "README.md"
 authors = [
@@ -20,7 +20,7 @@ dependencies = [
     "jupyter_client",
     "docutils"
 ]
-requires-python = ">=3.12"
+requires-python = ">=3.10"
 
 [project.optional-dependencies]
 docs = [
@@ -44,7 +44,7 @@ windows = { features = [], solve-group = "default" }
 default = { features = [], solve-group = "default" }
 
 [tool.pixi.dependencies]
-python = ">=3.12"
+python = ">=3.10"
 pip = "*"
 xeus-cpp = ">=0.8.0"
 # Clang 20 (C++20 compatible and supported by xeus-cpp 0.8.0)
@@ -76,8 +76,8 @@ docs = { cmd = "python utils/libdoc2rst.py && sphinx-build -b html docs html", d
 # Test (uses PYTHONPATH as fallback if not installed, but prefers installation)
 test = { cmd = "robot --extension rst docs", env = { PYTHONPATH = "src" } }
 
-# Build Conda package via rattler-build
-build-recipe = "rattler-build build --recipe recipe/recipe.yaml"
+# Build Conda package via rattler-build (local development)
+build-recipe = "CI=false rattler-build build --recipe recipe/recipe.yaml"
 
 # Build PyPI package
 build-pypi = "pip install build && python -m build"
@@ -85,8 +85,11 @@ build-pypi = "pip install build && python -m build"
 # Deploy to PyPI
 deploy-pypi = { cmd = "pip install twine && twine upload dist/*", depends-on = ["build-pypi"] }
 
-# Calculate SHA256 for conda-forge recipe (from GitHub tag)
-get-sha = "VERSION=$(grep -m 1 'version =' pyproject.toml | tr -d '\" ' | cut -d= -f2) && TAG=\"rf-clang-$VERSION\" && URL=\"https://github.com/maxrossello/robotframework-clang/archive/refs/tags/$TAG.tar.gz\" && echo -e \"\n📋 Copy into recipe.yaml:\n\nsource:\n  url: $URL\n  sha256: $(curl -L -s $URL | sha256sum | cut -d' ' -f1)\""
+# Calculate SHA256 for conda-forge recipe (from GitHub tag) and update recipe.yaml
+get-sha = "VERSION=$(grep -m 1 'version =' pyproject.toml | tr -d '\" ' | cut -d= -f2) && TAG=\"rf-clang-$VERSION\" && URL=\"https://github.com/maxrossello/robotframework-clang/archive/refs/tags/$TAG.tar.gz\" && echo \"Fetching: $URL\" && SHA=$(curl -L -s $URL | sha256sum | cut -d' ' -f1) && echo \"SHA256: $SHA\" && sed -i \"s/sha256: \\\".*\\\"/sha256: \\\"$SHA\\\"/\" recipe/recipe.yaml && echo \"✅ recipe/recipe.yaml updated.\""
+
+# Full release sequence
+release = "git push && git push --tags && sleep 5 && pixi run get-sha"
 
 # Full cleanup (same as Makefile)
 clean = "python -c 'import shutil, os, glob; shutil.rmtree(\"html\", ignore_errors=True); shutil.rmtree(\"docs/_build\", ignore_errors=True); [os.remove(f) for f in [\"output.xml\", \"log.html\", \"report.html\"] if os.path.exists(f)]; [shutil.rmtree(egg) for egg in glob.glob(\"src/*.egg-info\")]; [shutil.rmtree(os.path.join(r, d)) for r, ds, fs in os.walk(\".\", topdown=False) for d in ds if d == \"__pycache__\"]'"

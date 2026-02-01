@@ -1,0 +1,7 @@
+
+# Local configuration to resolve the stdlib("c") function.
+# Using 'clang' as a placeholder because it is already a project dependency
+# and its architecture-specific variants (e.g., clang_linux-64, clang_win-64) 
+# are valid packages in the conda-forge channel.
+c_stdlib:
+  - clang

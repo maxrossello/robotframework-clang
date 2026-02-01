@@ -77,7 +77,7 @@ Evaluates a C++ boolean condition and fails the test if it is false.
 **Arguments:**
 
 - ``cond``: A string containing a C++ expression that evaluates to ``bool``.
-- ``otherwise``: Optional message or value to print/include in the error if the assertion fails.
+- ``otherwise``: Optional message or value to include in the error if the assertion fails.
 
 **Example:**
 

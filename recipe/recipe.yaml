@@ -1,10 +1,10 @@
 context:
   name: robotframework-clang
-  version: "0.2.4"
+  version: "0.2.5"
   xeus_cpp_version: "0.8.0"
   clang_major: "20"
   is_local: ${{ env.get("CI") == "false" }}
-  sha256: "e0f93abbc904d5602f7839a36d93b9ca252f03bbef08db4d73593ed01fd1871c"
+  sha256: "bb0df03d78341f60f163353532c9b25c4848cb3607a271b9abe75fae91f2fc6e"
 
 package:
   name: ${{ name }}

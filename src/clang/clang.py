@@ -119,6 +119,14 @@ class clang:
                 import json
                 vswhere = os.path.join(os.environ.get('ProgramFiles(x86)', 'C:\\Program Files (x86)'),
                                       'Microsoft Visual Studio', 'Installer', 'vswhere.exe')
+                if not os.path.exists(vswhere):
+                    # Fallback: check if vswhere is in PATH
+                    try:
+                        vswhere_path = subprocess.check_output(['where', 'vswhere'], shell=False).decode().splitlines()[0].strip()
+                        if os.path.exists(vswhere_path): vswhere = vswhere_path
+                    except:
+                        pass
+
                 if os.path.exists(vswhere):
                     # Use cwd='C:\\' to avoid UNC path warnings from cmd.exe
                     out = subprocess.check_output([vswhere, '-latest', '-products', '*', 
@@ -151,7 +159,7 @@ class clang:
                                 lp_um = os.path.join(sdk_base, 'Lib', sv, 'um', 'x64')
                                 if os.path.exists(lp_um): discovered_libs.append(lp_um)
             except Exception as e:
-                print(f"*WARN* Could not detect MSVC paths: {e}")
+                print(f"*WARN* Could not detect MSVC paths via vswhere: {e}")
 
             # Update Environment Variables
             os.environ['PATH'] = os.pathsep.join(filter(None, new_paths + [os.environ.get('PATH', '')]))
@@ -217,36 +225,40 @@ class clang:
 
         # Bootstrap Windows JIT symbols
         if sys.platform == 'win32':
+            # We declare LoadLibraryA with an internal name but map it to the real symbol via __asm__.
+            # This avoids conflicts if the user later includes windows.h.
             bootstrap_cpp = r"""
-            #include <windows.h>
-            #include <stdlib.h>
+            extern "C" __declspec(dllimport) void* __stdcall _robot_internal_load_lib(const char*) __asm__("LoadLibraryA");
+            
+            using _robot_size_t = decltype(sizeof(0));
+            extern "C" void* _robot_internal_malloc(_robot_size_t) __asm__("malloc");
+            extern "C" void _robot_internal_free(void*) __asm__("free");
 
-            // Force loading of runtime DLLs
+            // Force loading of runtime DLLs using the internal names
             extern "C" void* _robot_init_runtimes() {
-                LoadLibraryA("msvcp140.dll");
-                LoadLibraryA("msvcp140_1.dll");
-                LoadLibraryA("msvcp140_2.dll");
-                LoadLibraryA("vcruntime140.dll");
-                LoadLibraryA("vcruntime140_1.dll");
-                LoadLibraryA("ucrtbase.dll");
-                LoadLibraryA("msvcrt.dll");
-                LoadLibraryA("msvcprt.dll");
+                _robot_internal_load_lib("msvcp140.dll");
+                _robot_internal_load_lib("msvcp140_1.dll");
+                _robot_internal_load_lib("msvcp140_2.dll");
+                _robot_internal_load_lib("vcruntime140.dll");
+                _robot_internal_load_lib("vcruntime140_1.dll");
+                _robot_internal_load_lib("ucrtbase.dll");
+                _robot_internal_load_lib("msvcrt.dll");
+                _robot_internal_load_lib("msvcprt.dll");
                 return (void*)1;
             }
             static void* _dummy_init = _robot_init_runtimes();
 
-            // Proxy for missing RTTI symbols using __asm__ to set the correct mangled name
+            // Proxy for missing RTTI symbols (standard Clang-on-Windows JIT issue)
             struct __type_info_node {
                 void* _Mem;
                 struct __type_info_node* _Next;
             };
-            // Use selectany and asm to provide the symbol without syntax errors
             __declspec(selectany) struct __type_info_node __robot_type_info_root __asm__("?__type_info_root_node@@3U__type_info_node@@A") = { 0, 0 };
             __declspec(selectany) void* __robot_type_info_vtable [16] __asm__("??_7type_info@@6B@") = { 0 };
 
-            // Workaround for missing delete symbols
-            void operator delete(void* p, size_t n) noexcept {
-                free(p);
+            // Workaround for missing delete symbols in some JIT contexts
+            void operator delete(void* p, _robot_size_t n) noexcept {
+                _robot_internal_free(p);
             }
             """
             try:
@@ -260,13 +272,12 @@ class clang:
             '#include <cstdlib>'
         ]
         
-        if sys.platform == 'win32':
-            common_headers.append('#include <windows.h>')
-        else:
+        # On Windows, we NO LONGER automatically include windows.h to avoid namespace pollution.
+        # Unix still needs dlfcn.h for internal helpers if they use it.
+        if sys.platform != 'win32':
             common_headers.extend(['#include <dlfcn.h>', '#include <cxxabi.h>'])
 
         try:
-            # Use longer timeout for the first large block of headers on Windows
             self.source_exec('\n'.join(common_headers), timeout=60)
         except Exception as e:
             self._stop_kernel()

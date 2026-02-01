@@ -107,11 +107,11 @@ class clang:
                 vswhere = os.path.join(os.environ.get('ProgramFiles(x86)', 'C:\\Program Files (x86)'), 'Microsoft Visual Studio', 'Installer', 'vswhere.exe')
                 if not os.path.exists(vswhere):
                     try:
-                        v_path = subprocess.check_output(['where', 'vswhere'], shell=False).decode().splitlines()[0].strip()
-                        if os.path.exists(v_path): vswhere = v_path
+                        v_p = subprocess.check_output(['where', 'vswhere'], shell=False).decode().splitlines()[0].strip()
+                        if os.path.exists(v_p): vswhere = v_p
                     except: vswhere = None
                 if vswhere and os.path.exists(vswhere):
-                    out = subprocess.check_output([vswhere, '-latest', '-products', '*', '-requires', 'Microsoft.VisualStudio.Component.VC.Tools.x86.x64', '-format', 'json'], shell=False, cwd='C:\\')
+                    out = subprocess.check_output([vswhere, '-latest', '-products', '*', '-format', 'json'], shell=False, cwd='C:\\')
                     info = json.loads(out)
                     if info:
                         install_path = info[0]['installationPath']
@@ -119,8 +119,7 @@ class clang:
                         if os.path.exists(tools_path):
                             versions = sorted(os.listdir(tools_path), reverse=True)
                             if versions:
-                                v = versions[0]
-                                new_incs.append(os.path.join(tools_path, v, 'include'))
+                                v = versions[0]; new_incs.append(os.path.join(tools_path, v, 'include'))
                                 discovered_libs.append(os.path.join(tools_path, v, 'lib', 'x64'))
                         sdk_base = os.path.join(os.environ.get('ProgramFiles(x86)', 'C:\\Program Files (x86)'), 'Windows Kits', '10')
                         sdk_inc_base = os.path.join(sdk_base, 'Include')
@@ -134,17 +133,16 @@ class clang:
                                 for sub in ['ucrt', 'um']:
                                     p = os.path.join(sdk_base, 'Lib', sv, sub, 'x64')
                                     if os.path.exists(p): discovered_libs.append(p)
-            except Exception as e: print(f"*WARN* Could not detect MSVC paths via vswhere: {e}")
+            except Exception as e: print(f"*WARN* MSVC discovery failed: {e}")
             os.environ['PATH'] = os.pathsep.join(filter(None, new_paths + [os.environ.get('PATH', '')]))
             os.environ['LIB'] = os.pathsep.join(filter(None, discovered_libs + new_libs + [os.environ.get('LIB', '')]))
             os.environ['INCLUDE'] = os.pathsep.join(filter(None, new_incs + [os.environ.get('INCLUDE', '')]))
-            potential_paths = [os.path.join(prefix, 'share', 'jupyter'), os.path.join(prefix, 'Library', 'share', 'jupyter')]
-            current_jupyter_path = os.environ.get('JUPYTER_PATH', '')
-            path_list = current_jupyter_path.split(os.pathsep) if current_jupyter_path else []
-            updated = False
-            for p in potential_paths:
-                if os.path.exists(p) and p not in path_list: path_list.insert(0, p); updated = True
-            if updated: os.environ['JUPYTER_PATH'] = os.pathsep.join(path_list)
+            p_paths = [os.path.join(prefix, 'share', 'jupyter'), os.path.join(prefix, 'Library', 'share', 'jupyter'), os.path.join(os.environ.get('ALLUSERSPROFILE', 'C:\\ProgramData'), 'jupyter')]
+            cur_j = os.environ.get('JUPYTER_PATH', '')
+            path_list = cur_j.split(os.pathsep) if cur_j else []
+            for p in p_paths:
+                if os.path.exists(p) and p not in path_list: path_list.insert(0, p)
+            os.environ['JUPYTER_PATH'] = os.pathsep.join(path_list)
 
         try:
             self.km = KernelManager(kernel_name=kernel_name)
@@ -154,17 +152,14 @@ class clang:
                 if prefix:
                     for lp in discovered_libs + [os.path.join(prefix, 'Library', 'lib')]:
                         if lp and os.path.exists(lp):
-                            lp_f = lp.replace("\\", "/")
-                            extra_args.append(f'-L{lp_f}')
+                            lp_f = lp.replace("\\", "/"); extra_args.append(f'-L{lp_f}')
                 for ip in new_incs:
                     if ip and os.path.exists(ip):
-                        ip_f = ip.replace("\\", "/")
-                        extra_args.append(f'-I{ip_f}')
+                        ip_f = ip.replace("\\", "/"); extra_args.append(f'-I{ip_f}')
             self.km.start_kernel(stderr=subprocess.DEVNULL, extra_arguments=extra_args)
         except Exception as e: raise RuntimeError(f"Failed to start C++ Kernel '{kernel_name}': {e}")
         
-        self.kc = self.km.client()
-        self.kc.start_channels()
+        self.kc = self.km.client(); self.kc.start_channels()
         try: self.kc.wait_for_ready(timeout=60)
         except RuntimeError: self._stop_kernel(); raise RuntimeError("Kernel timed out at startup.")
 
@@ -190,29 +185,18 @@ class clang:
 
         common_headers = ['#include <iostream>', '#include <string>', '#include <stdexcept>', '#include <vector>', '#include <memory>', '#include <typeinfo>', '#include <cstdlib>']
         if sys.platform != 'win32': common_headers.extend(['#include <dlfcn.h>', '#include <cxxabi.h>'])
-        
         for header in common_headers:
-            try:
-                # Load each header individually to pinpoint the failure
-                self.source_exec(header, timeout=20)
+            try: self.source_exec(header, timeout=60)
             except Exception as e:
-                if sys.platform == 'win32':
-                    print(f"*WARN* Failed to load {header}: {e}")
-                    # On Windows, we might continue if it's not iostream
-                    if '<iostream>' in header: 
-                        self._stop_kernel()
-                        raise RuntimeError(f"Critical header failed: {header}")
-                else:
-                    self._stop_kernel()
-                    raise RuntimeError(f"Failed to load standard header {header}: {e}")
+                print(f"*WARN* Failed to load {header}: {e}")
+                if '<iostream>' in header: self._stop_kernel(); raise RuntimeError(f"Critical header failed: {header}")
 
         if sys.platform == 'win32':
             cpp_helpers = r"""
             #include <string>
             #include <iostream>
             extern "C" void* _robot_load_lib(const char* path) {
-                std::string p = path;
-                for (auto &c : p) if (c == '/') c = '\\';
+                std::string p = path; for (auto &c : p) if (c == '/') c = '\\';
                 void* h = _robot_internal_load_lib(p.c_str());
                 if (!h) std::cout << "DEBUG: LoadLibrary failed for " << p << std::endl;
                 return h;
@@ -227,8 +211,7 @@ class clang:
                 return h;
             }
             std::string _robot_demangle(const char* name) {
-                int status = -1;
-                char* res = abi::__cxa_demangle(name, NULL, NULL, &status);
+                int status = -1; char* res = abi::__cxa_demangle(name, NULL, NULL, &status);
                 if (status == 0 && res != NULL) { std::string demangled(res); std::free(res); return demangled; }
                 return std::string(name);
             }
@@ -252,8 +235,8 @@ class clang:
                 if os.path.exists(path): resolved_path = os.path.abspath(path); break
             if resolved_path: break
         target = resolved_path if resolved_path else candidates[0]
-        target_fixed = target.replace("\\", "/")
-        try: self.source_exec(f'_robot_load_lib("{target_fixed}");', timeout=60)
+        target_f = target.replace("\\", "/")
+        try: self.source_exec(f'_robot_load_lib("{target_f}");', timeout=60)
         except Exception as e: self._stop_kernel(); raise RuntimeError(f"Failed to load linked library {lib_name}: {e}")
                      
     def _stop_kernel(self):
@@ -442,8 +425,8 @@ class clang:
         | Load Shared Library | /usr/lib/libm.so |
         """
         for lib in libraries:
-            lib_fixed = lib.replace("\\", "/")
-            self.source_exec(f'_robot_load_lib("{lib_fixed}");', timeout=60)
+            lib_f = lib.replace("\\", "/")
+            self.source_exec(f'_robot_load_lib("{lib_f}");', timeout=60)
 
     def assert_(self, cond, otherwise=None):
         """

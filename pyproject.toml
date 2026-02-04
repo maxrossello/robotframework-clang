@@ -74,7 +74,7 @@ install = "pip install -e . --no-deps"
 docs = { cmd = "python utils/libdoc2rst.py && sphinx-build -b html docs html", depends-on = ["install"] }
 
 # Test (uses PYTHONPATH as fallback if not installed, but prefers installation)
-test = { cmd = "robot --extension rst docs", env = { PYTHONPATH = "src" } }
+test = { cmd = "robot -X --extension rst docs", env = { PYTHONPATH = "src" } }
 
 # Build Conda package via rattler-build (local development)
 build-recipe = "CI=false rattler-build build --recipe recipe/recipe.yaml"

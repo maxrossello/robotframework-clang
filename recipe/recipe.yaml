@@ -1,6 +1,6 @@
 context:
   name: robotframework-clang
-  version: "0.2.5"
+  version: "0.2.6"
   xeus_cpp_version: "0.8.0"
   clang_major: "20"
   is_local: ${{ env.get("CI") == "false" }}

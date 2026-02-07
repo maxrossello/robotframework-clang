@@ -137,7 +137,7 @@ We can use standard C++ boolean logic to perform assertions inside the kernel.
     Check Assertion
         [Documentation]    Verifies the Assert keyword.
         Assert    1 == 1
-        Run Keyword And Expect Error    *Assertion Failed*    Assert    1 == 0
+        Run Keyword And Expect Error    *AssertionError*    Assert    1 == 0
 
 Type Introspection
 ------------------
@@ -223,21 +223,31 @@ We can also load compiled shared libraries (.so/.dylib/dll) into the running ker
         Should Be Equal As Integers    ${result.rc}    0
     
     Run Windows Compile
-        [Arguments]    ${cmd}    ${src}    ${out}
-        # Use Process library to avoid cmd.exe UNC path limitations
-        ${cmd_lower}=    Evaluate    '${cmd}'.lower().replace('.exe', '')
-        # Check if it's strictly cl or clang-cl (which use MSVC flags)
-        ${is_msvc}=    Evaluate    '${cmd_lower}'.endswith('cl')
+       [Arguments]    ${cmd}    ${src}    ${out}
+       # Make sure the command has .exe extension
+       # Conda provides 'clang++.exe', but CXX may be 'clang++' only,
+       # so Run Process fails without shell=True or an explicit extension
+       ${cmd_has_ext}=    Evaluate    '${cmd}'.lower().endswith('.exe')
+       ${cmd_fixed}=      Set Variable If    ${cmd_has_ext}    ${cmd}    ${cmd}.exe
+   
+       # Check if it's strictly cl or clang-cl (which use MSVC flags)
+       ${cmd_lower}=    Evaluate    '${cmd_fixed}'.lower()
+       ${is_msvc}=      Evaluate    'cl.exe' in '${cmd_lower}'
+       
+       IF    ${is_msvc}
+           ${result}=    Run Process    ${cmd_fixed}    -DEXPORT\=__declspec(dllexport)    /LD    /Fe${out}    ${src}
+       ELSE
+           # Assume clang++ or compatible driver
+           ${result}=    Run Process    ${cmd_fixed}    -DEXPORT\=__declspec(dllexport)    -shared    -o    ${out}    ${src}
+       END
+       
+       # Debug
+       IF    ${result.rc} != 0
+           Log    Compile Failed: ${result.stderr}    level=ERROR
+           Log    Stdout: ${result.stdout}    level=ERROR
+       END
+       Should Be Equal As Integers    ${result.rc}    0
         
-        IF    ${is_msvc}
-            ${result}=    Run Process    ${cmd}    -DEXPORT\=__declspec(dllexport)    /LD    /Fe${out}    ${src}
-        ELSE
-            # Assume clang++ or compatible driver
-            ${result}=    Run Process    ${cmd}    -DEXPORT\=__declspec(dllexport)    -shared    -o    ${out}    ${src}
-        END
-        
-        Should Be Equal As Integers    ${result.rc}    0
-    
     *** Test Cases ***
     Load Shared Library Test
         [Documentation]    Compiles a shared lib and loads it at runtime via dlopen/LoadLibrary.

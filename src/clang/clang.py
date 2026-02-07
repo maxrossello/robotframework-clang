@@ -16,6 +16,7 @@ import os
 import sys
 import subprocess
 from jupyter_client import KernelManager
+from robot.api.deco import keyword
 
 class clang:
     """
@@ -48,6 +49,7 @@ class clang:
     """
     
     ROBOT_LIBRARY_SCOPE = 'GLOBAL'
+    ROBOT_AUTO_KEYWORDS = False
 
     def __init__(self):
         """
@@ -60,7 +62,85 @@ class clang:
         self.includes = []
         self.link_dirs = []
         self.link_libs = []
+        self._toolchain_initialized = False
 
+    def init_toolchain(self):
+        """
+        Discovers and sets up the compiler toolchain environment.
+        On Windows, it searches for MSVC and Windows SDK, updating PATH, INCLUDE, and LIB.
+        On other platforms, it currently does nothing as standard paths are usually sufficient.
+        """
+        if self._toolchain_initialized: return
+        self._setup_windows_toolchain()
+        self._toolchain_initialized = True
+
+    def _setup_windows_toolchain(self):
+        """Internal helper to discover and configure MSVC/SDK on Windows."""
+        if sys.platform != 'win32': return
+        
+        discovered_libs, new_incs, new_paths = [], [], []
+        prefix = os.environ.get('CONDA_PREFIX') or sys.prefix
+        if prefix:
+            new_paths.extend([os.path.join(prefix, 'Library', 'bin'), os.path.join(prefix, 'bin')])
+            new_libs = [os.path.join(prefix, 'Library', 'lib')]
+            new_incs.extend([os.path.join(prefix, 'Library', 'include')])
+            try:
+                import json
+                vswhere = os.path.join(os.environ.get('ProgramFiles(x86)', 'C:\\Program Files (x86)'), 'Microsoft Visual Studio', 'Installer', 'vswhere.exe')
+                if not os.path.exists(vswhere):
+                    try:
+                        v_path = subprocess.check_output(['where', 'vswhere'], shell=False).decode().splitlines()[0].strip()
+                        if os.path.exists(v_path): vswhere = v_path
+                    except: vswhere = None
+                
+                if vswhere and os.path.exists(vswhere):
+                    out = subprocess.check_output([vswhere, '-latest', '-products', '*', '-format', 'json'], shell=False, cwd='C:\\')
+                    info = json.loads(out)
+                    if info:
+                        install_path = info[0]['installationPath']
+                        tools_path = os.path.join(install_path, 'VC', 'Tools', 'MSVC')
+                        if os.path.exists(tools_path):
+                            versions = sorted(os.listdir(tools_path), reverse=True)
+                            if versions:
+                                v = versions[0]
+                                new_incs.append(os.path.join(tools_path, v, 'include'))
+                                discovered_libs.append(os.path.join(tools_path, v, 'lib', 'x64'))
+                                # Add the bin path so cl.exe can be found
+                                new_paths.append(os.path.join(tools_path, v, 'bin', 'Hostx64', 'x64'))
+                        
+                        sdk_base = os.path.join(os.environ.get('ProgramFiles(x86)', 'C:\\Program Files (x86)'), 'Windows Kits', '10')
+                        sdk_inc_base = os.path.join(sdk_base, 'Include')
+                        if os.path.exists(sdk_inc_base):
+                            sdk_versions = sorted(os.listdir(sdk_inc_base), reverse=True)
+                            if sdk_versions:
+                                sv = sdk_versions[0]
+                                for sub in ['ucrt', 'shared', 'um', 'winrt']:
+                                    p = os.path.join(sdk_inc_base, sv, sub)
+                                    if os.path.exists(p): new_incs.append(p)
+                                for sub in ['ucrt', 'um']:
+                                    p = os.path.join(sdk_base, 'Lib', sv, sub, 'x64')
+                                    if os.path.exists(p): discovered_libs.append(p)
+            except Exception as e: print(f"*WARN* MSVC discovery failed: {e}")
+            
+            # Update environment variables
+            os.environ['PATH'] = os.pathsep.join(filter(None, new_paths + [os.environ.get('PATH', '')]))
+            os.environ['LIB'] = os.pathsep.join(filter(None, discovered_libs + new_libs + [os.environ.get('LIB', '')]))
+            os.environ['INCLUDE'] = os.pathsep.join(filter(None, new_incs + [os.environ.get('INCLUDE', '')]))
+
+            # Jupyter path fix
+            p_paths = [os.path.join(prefix, 'share', 'jupyter'), os.path.join(prefix, 'Library', 'share', 'jupyter'), os.path.join(os.environ.get('ALLUSERSPROFILE', 'C:\\ProgramData'), 'jupyter')]
+            cur_j = os.environ.get('JUPYTER_PATH', '')
+            path_list = cur_j.split(os.pathsep) if cur_j else []
+            for p in p_paths:
+                if os.path.exists(p) and p not in path_list: path_list.insert(0, p)
+            os.environ['JUPYTER_PATH'] = os.pathsep.join(path_list)
+        
+        # Save discovered paths for later use in start_kernel
+        self._discovered_libs = discovered_libs
+        self._new_incs = new_incs
+        self._new_libs = new_libs if prefix else []
+
+    @keyword
     def start_kernel(self, kernel_name='xcpp20'):
         """
         Starts the Clang-REPL kernel (Xeus-cpp) in a subprocess.
@@ -83,6 +163,10 @@ class clang:
         | Start Kernel | kernel_name=xcpp17 |
         """
         if self.km: self._stop_kernel()
+
+        # Ensure toolchain is initialized
+        self.init_toolchain()
+
         if self.includes:
             new_inc_env = os.pathsep.join(self.includes)
             for var in ['CPLUS_INCLUDE_PATH', 'CPATH']:
@@ -96,72 +180,27 @@ class clang:
                 existing = os.environ.get(var, '')
                 os.environ[var] = os.pathsep.join([new_lib_env, existing]) if existing else new_lib_env
 
-        prefix = os.environ.get('CONDA_PREFIX') or sys.prefix
-        discovered_libs, new_incs = [], []
-        if sys.platform == 'win32' and prefix:
-            new_paths = [os.path.join(prefix, 'Library', 'bin'), os.path.join(prefix, 'bin')]
-            new_libs = [os.path.join(prefix, 'Library', 'lib')]
-            new_incs = [os.path.join(prefix, 'Library', 'include')]
-            try:
-                import json
-                vswhere = os.path.join(os.environ.get('ProgramFiles(x86)', 'C:\\Program Files (x86)'), 'Microsoft Visual Studio', 'Installer', 'vswhere.exe')
-                if not os.path.exists(vswhere):
-                    try:
-                        v_p = subprocess.check_output(['where', 'vswhere'], shell=False).decode().splitlines()[0].strip()
-                        if os.path.exists(v_p): vswhere = v_p
-                    except: vswhere = None
-                if vswhere and os.path.exists(vswhere):
-                    out = subprocess.check_output([vswhere, '-latest', '-products', '*', '-format', 'json'], shell=False, cwd='C:\\')
-                    info = json.loads(out)
-                    if info:
-                        install_path = info[0]['installationPath']
-                        tools_path = os.path.join(install_path, 'VC', 'Tools', 'MSVC')
-                        if os.path.exists(tools_path):
-                            versions = sorted(os.listdir(tools_path), reverse=True)
-                            if versions:
-                                v = versions[0]; new_incs.append(os.path.join(tools_path, v, 'include'))
-                                discovered_libs.append(os.path.join(tools_path, v, 'lib', 'x64'))
-                        sdk_base = os.path.join(os.environ.get('ProgramFiles(x86)', 'C:\\Program Files (x86)'), 'Windows Kits', '10')
-                        sdk_inc_base = os.path.join(sdk_base, 'Include')
-                        if os.path.exists(sdk_inc_base):
-                            sdk_versions = sorted(os.listdir(sdk_inc_base), reverse=True)
-                            if sdk_versions:
-                                sv = sdk_versions[0]
-                                for sub in ['ucrt', 'shared', 'um', 'winrt']:
-                                    p = os.path.join(sdk_inc_base, sv, sub)
-                                    if os.path.exists(p): new_incs.append(p)
-                                for sub in ['ucrt', 'um']:
-                                    p = os.path.join(sdk_base, 'Lib', sv, sub, 'x64')
-                                    if os.path.exists(p): discovered_libs.append(p)
-            except Exception as e: print(f"*WARN* MSVC discovery failed: {e}")
-            os.environ['PATH'] = os.pathsep.join(filter(None, new_paths + [os.environ.get('PATH', '')]))
-            os.environ['LIB'] = os.pathsep.join(filter(None, discovered_libs + new_libs + [os.environ.get('LIB', '')]))
-            os.environ['INCLUDE'] = os.pathsep.join(filter(None, new_incs + [os.environ.get('INCLUDE', '')]))
-            p_paths = [os.path.join(prefix, 'share', 'jupyter'), os.path.join(prefix, 'Library', 'share', 'jupyter'), os.path.join(os.environ.get('ALLUSERSPROFILE', 'C:\\ProgramData'), 'jupyter')]
-            cur_j = os.environ.get('JUPYTER_PATH', '')
-            path_list = cur_j.split(os.pathsep) if cur_j else []
-            for p in p_paths:
-                if os.path.exists(p) and p not in path_list: path_list.insert(0, p)
-            os.environ['JUPYTER_PATH'] = os.pathsep.join(path_list)
-
         try:
             self.km = KernelManager(kernel_name=kernel_name)
             extra_args = ["-std=c++20"]
             if sys.platform == 'win32':
-                extra_args.extend(["-D_DLL", "-D_MT", "-D_CRT_SECURE_NO_WARNINGS", "-fms-extensions", "-fms-compatibility", "-fms-runtime-lib=dll", "-fno-sized-deallocation", "-Xlinker", "/NODEFAULTLIB:libcmt", "-lmsvcprt", "-lmsvcrt", "-lvcruntime", "-lucrt"])
-                if prefix:
-                    for lp in discovered_libs + [os.path.join(prefix, 'Library', 'lib')]:
-                        if lp and os.path.exists(lp):
-                            lp_f = lp.replace("\\", "/"); extra_args.append(f'-L{lp_f}')
-                for ip in new_incs:
+                extra_args.extend(["-D_DLL", "-D_MT", "-D_CRT_SECURE_NO_WARNINGS", "-fms-extensions", "-fms-compatibility", "-fms-runtime-lib=dll", "-fno-sized-deallocation"])
+                # Add discovered paths as explicit flags for Clang
+                for ip in self._new_incs + self.includes:
                     if ip and os.path.exists(ip):
                         ip_f = ip.replace("\\", "/"); extra_args.append(f'-I{ip_f}')
+                for lp in self._discovered_libs + self._new_libs + self.link_dirs:
+                     if lp and os.path.exists(lp):
+                        lp_f = lp.replace("\\", "/"); extra_args.append(f'-L{lp_f}')
+                extra_args.extend(["-Xlinker", "/NODEFAULTLIB:libcmt", "-lmsvcprt", "-lmsvcrt", "-lvcruntime", "-lucrt"])
+            
             self.km.start_kernel(stderr=subprocess.DEVNULL, extra_arguments=extra_args)
         except Exception as e: raise RuntimeError(f"Failed to start C++ Kernel '{kernel_name}': {e}")
         
         self.kc = self.km.client(); self.kc.start_channels()
-        try: self.kc.wait_for_ready(timeout=60)
-        except RuntimeError: self._stop_kernel(); raise RuntimeError("Kernel timed out at startup.")
+        startup_timeout = 120 if sys.platform == 'win32' else 60
+        try: self.kc.wait_for_ready(timeout=startup_timeout)
+        except RuntimeError: self._stop_kernel(); raise RuntimeError(f"Kernel timed out at startup ({startup_timeout}s).")
 
         if sys.platform == 'win32':
             bootstrap_cpp = r"""
@@ -170,9 +209,7 @@ class clang:
             extern "C" void* _robot_internal_malloc(_robot_size_t) __asm__("malloc");
             extern "C" void _robot_internal_free(void*) __asm__("free");
             extern "C" void* _robot_init_runtimes() {
-                _robot_internal_load_lib("msvcp140.dll"); _robot_internal_load_lib("msvcp140_1.dll"); _robot_internal_load_lib("msvcp140_2.dll");
-                _robot_internal_load_lib("vcruntime140.dll"); _robot_internal_load_lib("vcruntime140_1.dll"); _robot_internal_load_lib("ucrtbase.dll");
-                _robot_internal_load_lib("msvcrt.dll"); _robot_internal_load_lib("msvcprt.dll"); return (void*)1;
+                _robot_internal_load_lib("msvcp140.dll"); _robot_internal_load_lib("vcruntime140.dll"); return (void*)1;
             }
             static void* _dummy_init = _robot_init_runtimes();
             struct __type_info_node { void* _Mem; struct __type_info_node* _Next; };
@@ -185,21 +222,20 @@ class clang:
 
         common_headers = ['#include <iostream>', '#include <string>', '#include <stdexcept>', '#include <vector>', '#include <memory>', '#include <typeinfo>', '#include <cstdlib>']
         if sys.platform != 'win32': common_headers.extend(['#include <dlfcn.h>', '#include <cxxabi.h>'])
+        header_timeout = 90 if sys.platform == 'win32' else 60
         for header in common_headers:
-            try: self.source_exec(header, timeout=60)
-            except Exception as e:
-                print(f"*WARN* Failed to load {header}: {e}")
-                if '<iostream>' in header: self._stop_kernel(); raise RuntimeError(f"Critical header failed: {header}")
+            try: self.source_exec(header, timeout=header_timeout)
+            except Exception as e: 
+                self._stop_kernel(); raise RuntimeError(f"Failed to load standard header '{header}': {e}")
 
         if sys.platform == 'win32':
             cpp_helpers = r"""
             #include <string>
             #include <iostream>
-            extern "C" void* _robot_load_lib(const char* path) {
+            extern "C" __declspec(dllimport) void* __stdcall _robot_internal_load_lib(const char*) __asm__("LoadLibraryA");
+            void* _robot_load_lib(const char* path) {
                 std::string p = path; for (auto &c : p) if (c == '/') c = '\\';
-                void* h = _robot_internal_load_lib(p.c_str());
-                if (!h) std::cout << "DEBUG: LoadLibrary failed for " << p << std::endl;
-                return h;
+                void* h = _robot_internal_load_lib(p.c_str()); return h;
             }
             std::string _robot_demangle(const char* name) { return std::string(name); }
             """
@@ -247,10 +283,12 @@ class clang:
             self.kc = None
         if self.km:
             try:
-                if self.km.has_kernel: self.km.shutdown_kernel()
+                if self.km.has_kernel: self.km.shutdown_kernel(now=True)
+                self.km.cleanup_resources()
             except: pass
             self.km = None
 
+    @keyword
     def shutdown_kernel(self):
         """
         Stops the running C++ kernel and cleans up resources.
@@ -262,6 +300,7 @@ class clang:
         self.link_dirs = []
         self.link_libs = []
 
+    @keyword
     def add_include_path(self, *paths):
         """
         Adds directories to the C++ include search path (equivalent to ``-I`` flag).
@@ -282,6 +321,7 @@ class clang:
             if abs_p not in self.includes:
                 self.includes.append(abs_p)
 
+    @keyword
     def add_link_directory(self, *paths):
         """
         Adds directories to the linker search path (equivalent to ``-L`` flag).
@@ -297,6 +337,7 @@ class clang:
             if abs_p not in self.link_dirs:
                 self.link_dirs.append(abs_p)
 
+    @keyword
     def link_libraries(self, *libs):
         """
         Specifies libraries to link against at startup (equivalent to ``-l`` flag).
@@ -311,6 +352,7 @@ class clang:
             if l not in self.link_libs:
                 self.link_libs.append(l)
 
+    @keyword
     def source_include(self, *files):
         """
         Includes header files in the current session.
@@ -338,9 +380,10 @@ class clang:
                         break
             self.source_exec(f'#include "{target}"')
 
+    @keyword
     def source_parse(self, *parts):
         """
-        Defines C++ code structure (declarations) without expecting output.
+        Defines C++ code structure (declarations) without expecting output. 
         
         Useful for defining classes, functions, or globals.
         Alias for `Source Exec`.
@@ -351,6 +394,7 @@ class clang:
         """
         self.source_exec("\n".join(parts))
 
+    @keyword
     def source_file(self, path):
         """
         Reads a C++ source file and executes its content in the REPL.
@@ -367,6 +411,7 @@ class clang:
             content = f.read()
         return self.source_exec(content)
 
+    @keyword
     def source_exec(self, *parts, timeout=30):
         """
         Executes C++ code and returns the standard output.
@@ -409,6 +454,7 @@ class clang:
             raise Exception(f"C++ Execution Error: {''.join(errors)}")
         return "".join(output).strip()
 
+    @keyword
     def load_shared_library(self, *libraries):
         """
         Loads a shared object (.so) or dynamic library (.dylib/dll) into the process via ``dlopen``.
@@ -428,6 +474,7 @@ class clang:
             lib_f = lib.replace("\\", "/")
             self.source_exec(f'_robot_load_lib("{lib_f}");', timeout=60)
 
+    @keyword
     def assert_(self, cond, otherwise=None):
         """
         Evaluates a C++ boolean condition and fails the test if it is false.
@@ -452,8 +499,9 @@ class clang:
         try:
             self.source_exec(check_code, timeout=60)
         except Exception as e:
-            raise AssertionError(f"C++ Assertion Failed: {cond}") from e
+            raise AssertionError(f"C++ AssertionError: {cond}") from e
 
+    @keyword
     def get_value(self, obj_expression):
         """
         Retrieves the string representation of a C++ expression/variable.
@@ -472,6 +520,7 @@ class clang:
         """
         return self.source_exec(f"std::cout << ({obj_expression});", timeout=60)
 
+    @keyword
     def call_function(self, func, *params):
         """
         Calls a global C++ function with the provided arguments and returns its output.
@@ -489,6 +538,7 @@ class clang:
         params_str = ", ".join(map(str, params))
         return self.source_exec(f"std::cout << {func}({params_str});", timeout=60)
 
+    @keyword
     def typeid(self, expression):
         """
         Returns the **mangled** C++ type name of an expression (using ``typeid(...).name()``).
@@ -499,6 +549,7 @@ class clang:
         """
         return self.source_exec(f'std::cout << typeid({expression}).name();', timeout=60)
 
+    @keyword
     def typename(self, expression):
         """
         Returns the **demangled** (human-readable) C++ type name of an expression.
@@ -516,6 +567,7 @@ class clang:
         """
         return self.source_exec(f'std::cout << _robot_demangle(typeid({expression}).name());', timeout=60)
 
+    @keyword
     def nullptr(self):
         """
         Returns the string ``nullptr``. 

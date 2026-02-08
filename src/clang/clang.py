@@ -194,13 +194,19 @@ class clang:
                         lp_f = lp.replace("\\", "/"); extra_args.append(f'-L{lp_f}')
                 extra_args.extend(["-Xlinker", "/NODEFAULTLIB:libcmt", "-lmsvcprt", "-lmsvcrt", "-lvcruntime", "-lucrt"])
             
-            self.km.start_kernel(stderr=subprocess.DEVNULL, extra_arguments=extra_args)
-        except Exception as e: raise RuntimeError(f"Failed to start C++ Kernel '{kernel_name}': {e}")
-        
+            # Silence kernel process stderr to avoid deadlocks in Robot Framework
+            self._kernel_process_stderr_pipe = subprocess.DEVNULL
+            self.km.start_kernel(stderr=self._kernel_process_stderr_pipe, extra_arguments=extra_args)
+        except Exception as e:
+            error_message = f"Failed to start C++ Kernel '{kernel_name}': {e}"
+            raise RuntimeError(error_message)
+
         self.kc = self.km.client(); self.kc.start_channels()
         startup_timeout = 120 if sys.platform == 'win32' else 60
         try: self.kc.wait_for_ready(timeout=startup_timeout)
-        except RuntimeError: self._stop_kernel(); raise RuntimeError(f"Kernel timed out at startup ({startup_timeout}s).")
+        except RuntimeError:
+            error_message = f"Kernel timed out at startup ({startup_timeout}s)."
+            self._stop_kernel(); raise RuntimeError(error_message)
 
         if sys.platform == 'win32':
             bootstrap_cpp = r"""
@@ -376,7 +382,6 @@ class clang:
                     full_path = os.path.join(p, f)
                     if os.path.exists(full_path):
                         target = full_path
-                        print(f"*INFO* Resolved {f} to {target}")
                         break
             self.source_exec(f'#include "{target}"')
 

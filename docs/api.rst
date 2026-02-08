@@ -239,7 +239,7 @@ Source Parse
 
 **Arguments:** ``*parts``
 
-Defines C++ code structure (declarations) without expecting output.
+Defines C++ code structure (declarations) without expecting output. 
 
 Useful for defining classes, functions, or globals.
 Alias for `Source Exec`.

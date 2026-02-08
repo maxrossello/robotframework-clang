@@ -39,7 +39,7 @@ Here is why:
 
 - Python 3.10+
 - **xeus-cpp 0.8.0**
-- **Clang 20** (Note: Clang 21 is currently not supported by xeus-cpp 0.8.0)
+- **Clang 21**
 - **libcxx** (LLVM C++ standard library)
 - A working C++ kernel (e.g., `xcpp20`).
 

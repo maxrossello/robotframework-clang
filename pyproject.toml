@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "robotframework-clang"
-version = "0.2.6"
+version = "0.2.7"
 description = "Robot Framework library for Clang-REPL execution via xeus-cpp"
 readme = "README.md"
 authors = [
@@ -47,9 +47,9 @@ default = { features = [], solve-group = "default" }
 python = ">=3.10"
 pip = "*"
 xeus-cpp = ">=0.8.0"
-# Clang 20 (C++20 compatible and supported by xeus-cpp 0.8.0)
-clang = ">=20,<21"
-clangxx = ">=20,<21"
+# Clang 21 (C++20 compatible and supported by xeus-cpp 0.8.0)
+clang = ">=21,<22"
+clangxx = ">=21,<22"
 # Project dependencies
 robotframework = "*"
 jupyter_client = "*"

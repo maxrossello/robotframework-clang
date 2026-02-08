@@ -30,7 +30,7 @@ Here is why:
     *   **Cling**: Is a legacy fork of Clang. While powerful, it often lags behind upstream LLVM versions.
 
 3.  **Mature C++20 Support**:
-    *   Thanks to the underlying Clang 20+ engine, this library provides robust support for modern C++ standards, including C++20 Modules and Concepts, which are essential for testing modern codebases.
+    *   Thanks to the underlying Clang 21+ engine, this library provides robust support for modern C++ standards, including C++20 Modules and Concepts, which are essential for testing modern codebases.
 
 4.  **Testing vs. Bindings**:
     *   The goal here is not to "write C++ in Python" (bindings), but to **verify C++ behavior** in its native environment. We want to compile and run C++ snippets exactly as a compiler would, without the "magic" or type conversion layers that might obscure bugs in the C++ logic itself.

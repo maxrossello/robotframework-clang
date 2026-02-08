@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "robotframework-clang"
-version = "1.0.0"
+version = "1.0.1"
 description = "Robot Framework library for Clang-REPL execution via xeus-cpp"
 readme = "README.md"
 authors = [
@@ -71,7 +71,7 @@ ucrt = "*"
 install = "pip install -e . --no-deps"
 
 # Documentation generation
-docs = { cmd = "python utils/libdoc2rst.py && sphinx-build -b html docs html", depends-on = ["install"] }
+docs = { cmd = "python utils/libdoc2rst.py && sphinx-build -b html docs html && libdoc src/clang/clang.py docs/index.html", depends-on = ["install"] }
 
 # Test (uses PYTHONPATH as fallback if not installed, but prefers installation)
 test = { cmd = "robot $TESTOPTS -X --extension rst docs", env = { PYTHONPATH = "src" } }

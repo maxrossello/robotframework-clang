@@ -10,10 +10,10 @@ It relies on a Jupyter kernel (specifically ``xeus-cpp``) to maintain a persiste
 
 **Key Features:**
 
-- **JIT Compilation**: No need to create a `main.cpp` or compile a binary.
-- **State Persistence**: Variables defined in one test case (within the same suite/session) are available in subsequent ones.
-- **Modern C++**: Supports C++20 and potentially C++ modules.
-- **Libc++ Support**: Configured to use LLVM's libc++ by default.
+- **JIT Compilation**: Immediate execution of C++ code without linking or main() replacement.
+- **Modern C++**: Full support for C++20 and C++23 standards.
+- **Cross-Platform**: Pipelines tested and fully functional on Linux, Windows, and macOS.
+- **Easy Integration**: Available via Conda/Pixi for clean dependency management (Clang, xeus-cpp, etc.).
 
 **Basic Usage Example:**
 
@@ -25,8 +25,8 @@ It relies on a Jupyter kernel (specifically ``xeus-cpp``) to maintain a persiste
     *** Test Cases ***
     Example Test
         Start Kernel
-        Source Exec    int answer = 42;
-        ${result}=     Source Exec    std::cout << answer;
+        Source Exec        int answer = 42;
+        ${result}=         Source Exec        std::cout << answer;
         Should Be Equal    ${result}    42
         Shutdown Kernel
 
@@ -43,6 +43,8 @@ Adds directories to the C++ include search path (equivalent to ``-I`` flag).
 
 Paths added here are used by `Start Kernel` (at startup) and `Source Include` 
 (to resolve header files).
+
+Must be called **before** `Start Kernel`.
 
 **Arguments:**
 
@@ -263,11 +265,6 @@ standard library and prepares the environment.
 
 - ``kernel_name``: The name of the Jupyter kernel to use. Defaults to ``xcpp20``. 
   Ensure this kernel is installed in your environment (``jupyter kernelspec list``).
-
-The initialization process also defines a helper function ``_robot_demangle`` 
-to assist with type introspection.
-
-It configures the kernel to use ``libc++``.
 
 **Example:**
 

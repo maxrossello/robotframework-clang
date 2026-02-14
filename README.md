@@ -66,6 +66,10 @@ If you already have an environment with `xeus-cpp` and **Clang 20** installed an
 pip install robotframework-clang
 ```
 
+## Keyword documentation
+
+[Keyword documentation](https://robotframework-clang.readthedocs.io/en/latest/libdoc.html)
+
 ## Documentation and Testing
 
 This project uses an "executable documentation" approach. Tests are written in reStructuredText format within the `docs/` folder, serving as both usage examples and the actual test suite.

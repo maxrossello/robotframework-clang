@@ -10,4 +10,5 @@ Welcome to the documentation for **robotframework-clang**.
    overview
    tests
    api
+   Keywords Documentation <https://robotframework-clang.readthedocs.io/en/latest/libdoc.html>
    LICENSE

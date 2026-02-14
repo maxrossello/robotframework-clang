@@ -12,6 +12,10 @@ build:
     post_install:
       # Generate api.rst dynamically from source code
       - python utils/libdoc2rst.py
+    post_build:
+      # Generate keyword docs
+      - mkdir -p $READTHEDOCS_OUTPUT/html/_static
+      - python -m robot.libdoc src/clang/clang.py $READTHEDOCS_OUTPUT/html/libdoc.html
 
 # Build documentation in the docs/ directory with Sphinx
 sphinx:

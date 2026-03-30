@@ -219,7 +219,8 @@ We can also load compiled shared libraries (.so/.dylib/dll) into the running ker
         ELSE
             ${shlib_flag}=    Set Variable    -shared
         END
-        ${result}=    Run Process    ${cmd}    ${flags}    ${shlib_flag}    -DEXPORT\=    -fPIC    -fvisibility\=default    ${ldflags}    -o    ${out}    ${src}
+        # Use shell=True to correctly handle flags string and environment variables like $PREFIX
+        ${result}=    Run Process    ${cmd} ${flags} ${shlib_flag} -DEXPORT\= -fPIC -fvisibility\=default ${ldflags} -o ${out} ${src}    shell=True
         Should Be Equal As Integers    ${result.rc}    0
     
     Run Windows Compile

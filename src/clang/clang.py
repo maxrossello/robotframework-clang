@@ -79,14 +79,29 @@ class clang:
         """Internal helper to discover and configure MSVC/SDK on Windows."""
         if sys.platform != 'win32': return
         
-        discovered_libs, new_incs, new_paths = [], [], []
         prefix = os.environ.get('CONDA_PREFIX') or sys.prefix
+        new_paths, new_libs, new_incs = [], [], []
+
+        # 1. Add Conda/Pixi specific paths
         if prefix:
-            new_paths.extend([os.path.join(prefix, 'Library', 'bin'), os.path.join(prefix, 'bin')])
-            new_libs = [os.path.join(prefix, 'Library', 'lib')]
-            new_incs.extend([os.path.join(prefix, 'Library', 'include')])
+            for p in [os.path.join(prefix, 'Library', 'bin'), os.path.join(prefix, 'bin')]:
+                if os.path.exists(p): new_paths.append(p)
+            p_lib = os.path.join(prefix, 'Library', 'lib')
+            if os.path.exists(p_lib): new_libs.append(p_lib)
+            p_inc = os.path.join(prefix, 'Library', 'include')
+            if os.path.exists(p_inc): new_incs.append(p_inc)
+
+        # 2. Heuristic check: if INCLUDE already has MSVC/Windows Kits, we likely don't need discovery
+        env_inc = os.environ.get('INCLUDE', '')
+        if 'MSVC' in env_inc and 'Windows Kits' in env_inc:
+            needs_discovery = False
+        else:
+            needs_discovery = True
+
+        if needs_discovery:
             try:
                 import json
+                # Use vswhere.exe to find MSVC and Windows SDK
                 vswhere = os.path.join(os.environ.get('ProgramFiles(x86)', 'C:\\Program Files (x86)'), 'Microsoft Visual Studio', 'Installer', 'vswhere.exe')
                 if not os.path.exists(vswhere):
                     try:
@@ -105,8 +120,7 @@ class clang:
                             if versions:
                                 v = versions[0]
                                 new_incs.append(os.path.join(tools_path, v, 'include'))
-                                discovered_libs.append(os.path.join(tools_path, v, 'lib', 'x64'))
-                                # Add the bin path so cl.exe can be found
+                                new_libs.append(os.path.join(tools_path, v, 'lib', 'x64'))
                                 new_paths.append(os.path.join(tools_path, v, 'bin', 'Hostx64', 'x64'))
                         
                         sdk_base = os.path.join(os.environ.get('ProgramFiles(x86)', 'C:\\Program Files (x86)'), 'Windows Kits', '10')
@@ -120,26 +134,31 @@ class clang:
                                     if os.path.exists(p): new_incs.append(p)
                                 for sub in ['ucrt', 'um']:
                                     p = os.path.join(sdk_base, 'Lib', sv, sub, 'x64')
-                                    if os.path.exists(p): discovered_libs.append(p)
+                                    if os.path.exists(p): new_libs.append(p)
             except Exception as e: print(f"*WARN* MSVC discovery failed: {e}")
             
-            # Update environment variables
-            os.environ['PATH'] = os.pathsep.join(filter(None, new_paths + [os.environ.get('PATH', '')]))
-            os.environ['LIB'] = os.pathsep.join(filter(None, discovered_libs + new_libs + [os.environ.get('LIB', '')]))
-            os.environ['INCLUDE'] = os.pathsep.join(filter(None, new_incs + [os.environ.get('INCLUDE', '')]))
+        # 3. Update environment variables efficiently
+        def update_env(name, new_list):
+            if not new_list: return
+            current = os.environ.get(name, '').split(os.pathsep)
+            added = [p for p in new_list if p not in current] # Skip expensive exists check if already in env
+            if added:
+                # Re-verify existence only for genuinely new paths
+                valid_added = [p for p in added if os.path.exists(p)]
+                if valid_added:
+                    os.environ[name] = os.pathsep.join(valid_added + [p for p in current if p])
 
-            # Jupyter path fix
-            p_paths = [os.path.join(prefix, 'share', 'jupyter'), os.path.join(prefix, 'Library', 'share', 'jupyter'), os.path.join(os.environ.get('ALLUSERSPROFILE', 'C:\\ProgramData'), 'jupyter')]
-            cur_j = os.environ.get('JUPYTER_PATH', '')
-            path_list = cur_j.split(os.pathsep) if cur_j else []
-            for p in p_paths:
-                if os.path.exists(p) and p not in path_list: path_list.insert(0, p)
-            os.environ['JUPYTER_PATH'] = os.pathsep.join(path_list)
+        update_env('PATH', new_paths)
+        update_env('LIB', new_libs)
+        update_env('INCLUDE', new_incs)
+
+        # 4. Jupyter path fix
+        p_paths = [os.path.join(prefix, 'share', 'jupyter'), os.path.join(prefix, 'Library', 'share', 'jupyter'), os.path.join(os.environ.get('ALLUSERSPROFILE', 'C:\\ProgramData'), 'jupyter')]
+        update_env('JUPYTER_PATH', [p for p in p_paths if os.path.exists(p)])
         
-        # Save discovered paths for later use in start_kernel
-        self._discovered_libs = discovered_libs
-        self._new_incs = new_incs
-        self._new_libs = new_libs if prefix else []
+        # Save only the newly added paths to be passed as flags to the kernel
+        self._toolchain_incs = new_incs
+        self._toolchain_libs = new_libs
 
     @keyword
     def start_kernel(self, kernel_name='xcpp20'):
@@ -163,31 +182,16 @@ class clang:
         # Ensure toolchain is initialized
         self.init_toolchain()
 
-        if self.includes:
-            new_inc_env = os.pathsep.join(self.includes)
-            for var in ['CPLUS_INCLUDE_PATH', 'CPATH']:
-                existing = os.environ.get(var, '')
-                os.environ[var] = os.pathsep.join([new_inc_env, existing]) if existing else new_inc_env
-        if self.link_dirs:
-            new_lib_env = os.pathsep.join(self.link_dirs)
-            vars_to_update = ['LD_LIBRARY_PATH', 'LIBRARY_PATH', 'DYLD_LIBRARY_PATH']
-            if sys.platform == 'win32': vars_to_update.append('PATH')
-            for var in vars_to_update:
-                existing = os.environ.get(var, '')
-                os.environ[var] = os.pathsep.join([new_lib_env, existing]) if existing else new_lib_env
-
         try:
             self.km = KernelManager(kernel_name=kernel_name)
             extra_args = ["-std=c++20"]
             if sys.platform == 'win32':
                 extra_args.extend(["-D_DLL", "-D_MT", "-D_CRT_SECURE_NO_WARNINGS", "-fms-extensions", "-fms-compatibility", "-fms-runtime-lib=dll", "-fno-sized-deallocation"])
-                # Add discovered paths as explicit flags for Clang
-                for ip in self._new_incs + self.includes:
-                    if ip and os.path.exists(ip):
-                        ip_f = ip.replace("\\", "/"); extra_args.append(f'-I{ip_f}')
-                for lp in self._discovered_libs + self._new_libs + self.link_dirs:
-                     if lp and os.path.exists(lp):
-                        lp_f = lp.replace("\\", "/"); extra_args.append(f'-L{lp_f}')
+                # Pass only toolchain and user-defined paths to avoid command line bloat
+                for ip in self._toolchain_incs + self.includes:
+                    ip_f = ip.replace("\\", "/"); extra_args.append(f'-I{ip_f}')
+                for lp in self._toolchain_libs + self.link_dirs:
+                    lp_f = lp.replace("\\", "/"); extra_args.append(f'-L{lp_f}')
                 extra_args.extend(["-Xlinker", "/NODEFAULTLIB:libcmt", "-lmsvcprt", "-lmsvcrt", "-lvcruntime", "-lucrt"])
             
             # Silence kernel process stderr to avoid deadlocks in Robot Framework

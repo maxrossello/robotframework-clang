@@ -1,53 +1,52 @@
 context:
-  name: robotframework-clang
-  version: "1.0.2"
-  xeus_cpp_version: "0.8.0"
-  clang_major: "21"
+  version: "1.0.3"
+  xeus_cpp_version: "0.8.1"
   is_local: ${{ env.get("CI") == "false" }}
-  sha256: "a1ec1f298a4e0bddec3c581f3b0ebb83b2ae00858a897350dcce40394a5d80fc"
 
 package:
-  name: ${{ name }}
+  name: robotframework-clang
   version: ${{ version }}
 
 source:
-  path: ${{ ".." if is_local else undefined }}
-  url: ${{ undefined if is_local else ("https://github.com/maxrossello/robotframework-clang/archive/refs/tags/rf-clang-" + version + ".tar.gz") }}
-  sha256: ${{ undefined if is_local else sha256 }}
+  if: is_local
+  then:
+    path: ..
+    use_gitignore: true
+  else:
+    git: https://github.com
+    rev: rf-clang-${{ version }}
 
 build:
-  number: 0
-  script: ${{ PYTHON }} -m pip install . -vv
-  string: "${{ target_platform | replace('-', '_') }}_h${{ hash }}"
+  number: 2
+  script: 
+    - ${{ PYTHON }} -m pip install . --no-deps -vv
+  string: "${{ target_platform | replace('-', '_') }}_py${{ python | replace('.', '') | replace('*', '') }}_h${{ hash }}"
 
 requirements:
   build:
-    - ${{ compiler('c') }}
-    - ${{ compiler('cxx') }}
+    - ${{ compiler('clang') }}
+    - ${{ compiler('clangxx') }}
     - ${{ stdlib("c") }}
-    - if: linux or win
-      then:
-        - clang ${{ clang_major }}.*
-        - clangxx ${{ clang_major }}.*
   host:
-    - python
+    - python ${{ python }}
     - pip
     - setuptools >=61.0
     - wheel
+    - if: win
+      then: 
+        - vc
   run:
-    - python
+    - python ${{ python }}
     - robotframework
     - jupyter_client
     - docutils
-    - xeus-cpp >=${{ xeus_cpp_version }}
-    - clang ${{ clang_major }}.*
-    - clangxx ${{ clang_major }}.*
+    - xeus-cpp ==${{ xeus_cpp_version }}
+    - ${{ compiler('clang') }}
+    - ${{ compiler('clangxx') }}
+    - ${{ stdlib("c") }}
 
 tests:
   - script:
-      - if: win
-        then:
-          - set "JUPYTER_PATH=%PREFIX%\Library\share\jupyter"
       - jupyter kernelspec list
       - robot -X --extension rst docs/tests.rst
     files:
@@ -55,14 +54,9 @@ tests:
         - docs
     requirements:
       run:
-        - robotframework
-        - if: win
-          then:
-            - ${{ compiler('c') }}
-            - ${{ compiler('cxx') }}
-            # Clang needed at runtime because xeus-cpp uses it as a library
-            - clang ${{ clang_major }}.*
-            - clangxx ${{ clang_major }}.*
+        - ${{ compiler('clang') }}
+        - ${{ compiler('clangxx') }}
+        - ${{ stdlib("c") }}
 
 about:
   homepage: https://github.com/maxrossello/robotframework-clang

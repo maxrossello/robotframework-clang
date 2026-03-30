@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "robotframework-clang"
-version = "1.0.2"
+version = "1.0.3"
 description = "Robot Framework library for Clang-REPL execution via xeus-cpp"
 readme = "README.md"
 authors = [
@@ -44,12 +44,10 @@ windows = { features = [], solve-group = "default" }
 default = { features = [], solve-group = "default" }
 
 [tool.pixi.dependencies]
-python = ">=3.10"
-pip = ">=26.0.1,<27"
-xeus-cpp = ">=0.8.0"
-# Clang 21 (C++20 compatible and supported by xeus-cpp 0.8.0)
-clang = ">=21,<22"
-clangxx = ">=21,<22"
+python = ">=3.10,<3.14"
+xeus-cpp = "0.8.*"
+clang = "21.*"
+clangxx = "21.*"
 # Project dependencies
 robotframework = "*"
 jupyter_client = "*"
@@ -57,15 +55,13 @@ docutils = "*"
 # Build and Tooling
 rattler-build = "*"
 # Documentation
-sphinx = ">=8.2.3,<9"
+sphinx = "*"
 sphinx_rtd_theme = "*"
 myst-parser = "*"
-anaconda-client = ">=1.14.1,<2"
+anaconda-client = "*"
 
-[tool.pixi.target.win-64.dependencies]
-# Ensure standard Windows runtimes are present.
-vc14_runtime = "*"
-ucrt = "*"
+[tool.pixi.target.win-64.tasks]
+build-recipe = { cmd = "rattler-build build --recipe recipe/recipe.yaml --output-dir $TEMP/rattler-build", env = { CI = "false" } }
 
 [tool.pixi.tasks]
 # Editable installation
@@ -75,10 +71,10 @@ install = "pip install -e . --no-deps"
 docs = { cmd = "python utils/libdoc2rst.py && sphinx-build -b html docs html && libdoc src/clang/clang.py html/libdoc.html", depends-on = ["install"] }
 
 # Test (uses PYTHONPATH as fallback if not installed, but prefers installation)
-test = { cmd = "robot $TESTOPTS -X --extension rst docs", env = { PYTHONPATH = "src" } }
+test = { cmd = "robot $TESTOPTS -X --extension rst --outputdir logs/$PIXI_ENVIRONMENT_NAME docs", env = { PYTHONPATH = "src" } }
 
 # Build Conda package via rattler-build (local development)
-build-recipe = "CI=false rattler-build build --recipe recipe/recipe.yaml"
+build-recipe = "CI=false rattler-build build --recipe recipe/recipe.yaml --output-dir output/$PIXI_ENVIRONMENT_NAME"
 
 # Build PyPI package
 build-pypi = "pip install build && python -m build"
@@ -87,7 +83,7 @@ build-pypi = "pip install build && python -m build"
 deploy-pypi = { cmd = "pip install twine && twine upload dist/*", depends-on = ["build-pypi"] }
 
 # Calculate SHA256 for conda-forge recipe (from GitHub tag) and update recipe.yaml
-get-sha = "VERSION=$(grep -m 1 'version =' pyproject.toml | tr -d '\" ' | cut -d= -f2) && TAG=\"rf-clang-$VERSION\" && URL=\"https://github.com/maxrossello/robotframework-clang/archive/refs/tags/$TAG.tar.gz\" && echo \"Fetching: $URL\" && SHA=$(curl -L -s $URL | sha256sum | cut -d' ' -f1) && echo \"SHA256: $SHA\" && sed -i \"s/sha256: \\\".*\\\"/sha256: \\\"$SHA\\\"/\" recipe/recipe.yaml && echo \"✅ recipe/recipe.yaml updated.\""
+get-sha = "VERSION=$(grep -m 1 'version =' pyproject.toml | tr -d '\" ' | cut -d= -f2) && TAG=\"rf-clang-$VERSION\" && URL=\"https://github.com/maxrossello/robotframework-clang/archive/refs/tags/$TAG.tar.gz\" && echo \"Fetching: $URL\" && SHA=$(curl -L -s $URL | sha256sum | cut -d' ' -f1) && echo \"SHA256: $SHA\""
 
 # Full release sequence
 release = "git push -f && git push -f --tags && sleep 5 && pixi run get-sha"

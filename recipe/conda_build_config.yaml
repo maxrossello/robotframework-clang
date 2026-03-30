@@ -1,7 +1,16 @@
-
-# Local configuration to resolve the stdlib("c") function.
-# Using 'clang' as a placeholder because it is already a project dependency
-# and its architecture-specific variants (e.g., clang_linux-64, clang_win-64) 
-# are valid packages in the conda-forge channel.
+clang_compiler_version:
+  - 21
+clangxx_compiler_version:
+  - 21
 c_stdlib:
-  - clang
+  - sysroot       # [linux]
+  - macosx_deployment_target        # [osx]
+  - vs         # [win]
+c_stdlib_version:
+  - 2.17          # [linux]
+  - 11.0          # [osx]
+python:
+  - "3.10.*"
+  - "3.11.*"
+  - "3.12.*"
+  - "3.13.*"

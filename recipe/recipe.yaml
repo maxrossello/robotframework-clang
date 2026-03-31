@@ -1,23 +1,17 @@
 context:
   version: "1.0.3"
   xeus_cpp_version: "0.8.1"
-  is_local: ${{ env.get("CI") == "false" }}
 
 package:
   name: robotframework-clang
   version: ${{ version }}
 
 source:
-  if: is_local
-  then:
-    path: ..
-    use_gitignore: true
-  else:
-    git: https://github.com
-    rev: rf-clang-${{ version }}
+  path: ..
+  use_gitignore: true
 
 build:
-  number: 2
+  number: 3
   script: 
     - ${{ PYTHON }} -m pip install . --no-deps -vv
   string: "${{ target_platform | replace('-', '_') }}_py${{ python | replace('.', '') | replace('*', '') }}_h${{ hash }}"
@@ -32,9 +26,6 @@ requirements:
     - pip
     - setuptools >=61.0
     - wheel
-    - if: win
-      then: 
-        - vc
   run:
     - python ${{ python }}
     - robotframework

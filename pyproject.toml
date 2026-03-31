@@ -17,15 +17,15 @@ classifiers = [
 ]
 dependencies = [
     "robotframework",
-    "jupyter_client",
-    "docutils"
+    "jupyter_client"
 ]
-requires-python = ">=3.10"
+requires-python = ">=3.10,<3.14"
 
 [project.optional-dependencies]
 docs = [
     "sphinx",
     "sphinx_rtd_theme",
+    "docutils",
     "myst-parser"
 ]
 
@@ -60,9 +60,6 @@ sphinx_rtd_theme = "*"
 myst-parser = "*"
 anaconda-client = "*"
 
-[tool.pixi.target.win-64.tasks]
-build-recipe = { cmd = "rattler-build build --recipe recipe/recipe.yaml --output-dir $TEMP/rattler-build", env = { CI = "false" } }
-
 [tool.pixi.tasks]
 # Editable installation
 install = "pip install -e . --no-deps"
@@ -74,7 +71,7 @@ docs = { cmd = "python utils/libdoc2rst.py && sphinx-build -b html docs html && 
 test = { cmd = "robot $TESTOPTS -X --extension rst --outputdir logs/$PIXI_ENVIRONMENT_NAME docs", env = { PYTHONPATH = "src" } }
 
 # Build Conda package via rattler-build (local development)
-build-recipe = "CI=false rattler-build build --recipe recipe/recipe.yaml --output-dir output/$PIXI_ENVIRONMENT_NAME"
+build-recipe = "rattler-build build --recipe recipe/recipe.yaml"
 
 # Build PyPI package
 build-pypi = "pip install build && python -m build"

@@ -45,6 +45,8 @@ default = { features = [], solve-group = "default" }
 
 [tool.pixi.dependencies]
 python = ">=3.10,<3.14"
+pip = "*"
+setuptools = ">=61.0"
 xeus-cpp = "0.8.*"
 clang = "21.*"
 clangxx = "21.*"
@@ -61,8 +63,8 @@ myst-parser = "*"
 anaconda-client = "*"
 
 [tool.pixi.tasks]
-# Editable installation
-install = "pip install -e . --no-deps"
+# Installation
+install = "pip install . --no-deps"
 
 # Documentation generation
 docs = { cmd = "python utils/libdoc2rst.py && sphinx-build -b html docs html && libdoc src/clang/clang.py html/libdoc.html", depends-on = ["install"] }

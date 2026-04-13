@@ -197,7 +197,8 @@ class clang:
             # Try to inherit flags from the environment (Standard for Conda/Unix)
             env_flags = f"{os.environ.get('CPPFLAGS', '')} {os.environ.get('CXXFLAGS', '')}".strip()
             if env_flags:
-                extra_args.extend(shlex.split(env_flags))
+                pass
+                #extra_args.extend(shlex.split(env_flags))
 
             self.init_toolchain()
             if sys.platform == 'win32':
@@ -226,8 +227,8 @@ class clang:
                     extra_args.append(f"{flag}{sysroot}")
                     
             # Silence kernel process stderr to avoid deadlocks in Robot Framework
-            #self._kernel_process_stderr_pipe = subprocess.DEVNULL
-            self._kernel_process_stderr_pipe = None
+            self._kernel_process_stderr_pipe = subprocess.DEVNULL
+            #self._kernel_process_stderr_pipe = None  # used for DEBUG
             self.km.start_kernel(stderr=self._kernel_process_stderr_pipe, extra_arguments=extra_args)
         except Exception as e:
             error_message = f"Failed to start C++ Kernel '{kernel_name}': {e}"

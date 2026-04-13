@@ -41,6 +41,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/compiler-rt21-21.1.8-hb700be7_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/compiler-rt21_linux-64-21.1.8-hffcefe0_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/compiler-rt_linux-64-21.1.8-ha770c72_1.conda
+      - conda: https://conda.anaconda.org/conda-forge/noarch/conda-forge-pinning-2026.04.12.08.15.32-hd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/conda-package-handling-2.4.0-pyh7900ff3_2.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/conda-package-streaming-0.12.0-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/cppinterop-1.8.0-clang21_repl_hf9decc2_1.conda
@@ -235,6 +236,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-64/compiler-rt21-21.1.8-he914875_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/compiler-rt21_osx-64-21.1.8-he0f92a2_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/compiler-rt_osx-64-21.1.8-h694c41f_1.conda
+      - conda: https://conda.anaconda.org/conda-forge/noarch/conda-forge-pinning-2026.04.12.08.15.32-hd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/conda-package-handling-2.4.0-pyh7900ff3_2.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/conda-package-streaming-0.12.0-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/cppinterop-1.8.0-clang21_repl_h1a73c96_1.conda
@@ -421,6 +423,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/compiler-rt21-21.1.8-h855ad52_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/compiler-rt21_osx-arm64-21.1.8-h2514db7_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/compiler-rt_osx-arm64-21.1.8-hce30654_1.conda
+      - conda: https://conda.anaconda.org/conda-forge/noarch/conda-forge-pinning-2026.04.12.08.15.32-hd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/conda-package-handling-2.4.0-pyh7900ff3_2.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/conda-package-streaming-0.12.0-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/cppinterop-1.8.0-clang21_repl_hba695b4_1.conda
@@ -601,6 +604,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/colorama-0.4.6-pyhd8ed1ab_1.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/compiler-rt21-21.1.8-h49e36cd_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/compiler-rt21_win-64-21.1.8-h49e36cd_1.conda
+      - conda: https://conda.anaconda.org/conda-forge/noarch/conda-forge-pinning-2026.04.12.08.15.32-hd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/conda-package-handling-2.4.0-pyh7900ff3_2.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/conda-package-streaming-0.12.0-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/cppinterop-1.8.0-clang21_repl_hbefbd0e_1.conda
@@ -785,6 +789,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/compiler-rt21-21.1.8-hb700be7_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/compiler-rt21_linux-64-21.1.8-hffcefe0_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/compiler-rt_linux-64-21.1.8-ha770c72_1.conda
+      - conda: https://conda.anaconda.org/conda-forge/noarch/conda-forge-pinning-2026.04.12.08.15.32-hd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/conda-package-handling-2.4.0-pyh7900ff3_2.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/conda-package-streaming-0.12.0-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/cppinterop-1.8.0-clang21_repl_hf9decc2_1.conda
@@ -979,6 +984,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-64/compiler-rt21-21.1.8-he914875_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/compiler-rt21_osx-64-21.1.8-he0f92a2_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/compiler-rt_osx-64-21.1.8-h694c41f_1.conda
+      - conda: https://conda.anaconda.org/conda-forge/noarch/conda-forge-pinning-2026.04.12.08.15.32-hd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/conda-package-handling-2.4.0-pyh7900ff3_2.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/conda-package-streaming-0.12.0-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/cppinterop-1.8.0-clang21_repl_h1a73c96_1.conda
@@ -1165,6 +1171,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/compiler-rt21-21.1.8-h855ad52_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/compiler-rt21_osx-arm64-21.1.8-h2514db7_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/compiler-rt_osx-arm64-21.1.8-hce30654_1.conda
+      - conda: https://conda.anaconda.org/conda-forge/noarch/conda-forge-pinning-2026.04.12.08.15.32-hd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/conda-package-handling-2.4.0-pyh7900ff3_2.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/conda-package-streaming-0.12.0-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/cppinterop-1.8.0-clang21_repl_hba695b4_1.conda
@@ -1345,6 +1352,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/colorama-0.4.6-pyhd8ed1ab_1.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/compiler-rt21-21.1.8-h49e36cd_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/compiler-rt21_win-64-21.1.8-h49e36cd_1.conda
+      - conda: https://conda.anaconda.org/conda-forge/noarch/conda-forge-pinning-2026.04.12.08.15.32-hd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/conda-package-handling-2.4.0-pyh7900ff3_2.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/conda-package-streaming-0.12.0-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/cppinterop-1.8.0-clang21_repl_hbefbd0e_1.conda
@@ -1529,6 +1537,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/compiler-rt21-21.1.8-hb700be7_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/compiler-rt21_linux-64-21.1.8-hffcefe0_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/compiler-rt_linux-64-21.1.8-ha770c72_1.conda
+      - conda: https://conda.anaconda.org/conda-forge/noarch/conda-forge-pinning-2026.04.12.08.15.32-hd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/conda-package-handling-2.4.0-pyh7900ff3_2.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/conda-package-streaming-0.12.0-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/cppinterop-1.8.0-clang21_repl_hf9decc2_1.conda
@@ -1723,6 +1732,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-64/compiler-rt21-21.1.8-he914875_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/compiler-rt21_osx-64-21.1.8-he0f92a2_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/compiler-rt_osx-64-21.1.8-h694c41f_1.conda
+      - conda: https://conda.anaconda.org/conda-forge/noarch/conda-forge-pinning-2026.04.12.08.15.32-hd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/conda-package-handling-2.4.0-pyh7900ff3_2.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/conda-package-streaming-0.12.0-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/cppinterop-1.8.0-clang21_repl_h1a73c96_1.conda
@@ -1909,6 +1919,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/compiler-rt21-21.1.8-h855ad52_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/compiler-rt21_osx-arm64-21.1.8-h2514db7_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/compiler-rt_osx-arm64-21.1.8-hce30654_1.conda
+      - conda: https://conda.anaconda.org/conda-forge/noarch/conda-forge-pinning-2026.04.12.08.15.32-hd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/conda-package-handling-2.4.0-pyh7900ff3_2.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/conda-package-streaming-0.12.0-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/cppinterop-1.8.0-clang21_repl_hba695b4_1.conda
@@ -2089,6 +2100,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/colorama-0.4.6-pyhd8ed1ab_1.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/compiler-rt21-21.1.8-h49e36cd_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/compiler-rt21_win-64-21.1.8-h49e36cd_1.conda
+      - conda: https://conda.anaconda.org/conda-forge/noarch/conda-forge-pinning-2026.04.12.08.15.32-hd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/conda-package-handling-2.4.0-pyh7900ff3_2.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/conda-package-streaming-0.12.0-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/cppinterop-1.8.0-clang21_repl_hbefbd0e_1.conda
@@ -3292,6 +3304,14 @@ packages:
   purls: []
   size: 16533
   timestamp: 1769057560234
+- conda: https://conda.anaconda.org/conda-forge/noarch/conda-forge-pinning-2026.04.12.08.15.32-hd8ed1ab_0.conda
+  sha256: 253e94ec98a57bd033cc8e6bc93f5ad93b153644a2e9755fbe3831462a4fcf04
+  md5: cc12d6d31bbcc8ae5a01babfd8c289a0
+  license: BSD-3-Clause
+  license_family: BSD
+  purls: []
+  size: 65706
+  timestamp: 1775981802077
 - conda: https://conda.anaconda.org/conda-forge/noarch/conda-package-handling-2.4.0-pyh7900ff3_2.conda
   sha256: 8b2b1c235b7cbfa8488ad88ff934bdad25bac6a4c035714681fbff85b602f3f0
   md5: 32c158f481b4fd7630c565030f7bc482

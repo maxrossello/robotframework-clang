@@ -1,0 +1,8 @@
+clang_compiler_version:
+  - 21
+clangxx_compiler_version:
+  - 21
+python:
+  - "3.10.*"
+is_python_min:
+  - true

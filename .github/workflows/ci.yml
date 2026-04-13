@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, osx-64, osx-arm64, windows ]
     tags: [ 'rf-clang-*' ]
   pull_request:
     branches: [ main ]

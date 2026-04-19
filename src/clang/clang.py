@@ -194,11 +194,6 @@ class clang:
                 safe_path = lp.replace("\\", "/")
                 extra_args.append(f'-L{safe_path}')
                             
-            # Try to inherit flags from the environment (Standard for Conda/Unix)
-            env_flags = f"{os.environ.get('CPPFLAGS', '')} {os.environ.get('CXXFLAGS', '')}".strip()
-            if env_flags:
-                extra_args.extend(shlex.split(env_flags))
-
             self.init_toolchain()
             if sys.platform == 'win32':
                 extra_args.extend(["-D_DLL", "-D_MT", "-D_CRT_SECURE_NO_WARNINGS", "-fms-extensions", "-fms-compatibility", "-fms-runtime-lib=dll"])
@@ -213,7 +208,7 @@ class clang:
             
             # Universal Sysroot handling
             # We check for standard environment variables that define the system root.
-            # This is essential for macOS conda-build, but also applies to any 
+            # This is essential for macOS conda-forge, but also applies to any 
             # cross-compilation scenario on Linux or other platforms.
             sysroot = os.environ.get('SDKROOT') or os.environ.get('CONDA_BUILD_SYSROOT')
             
@@ -226,8 +221,7 @@ class clang:
                     extra_args.append(f"{flag}{sysroot}")
                     
             # Silence kernel process stderr to avoid deadlocks in Robot Framework
-            #self._kernel_process_stderr_pipe = subprocess.DEVNULL
-            self._kernel_process_stderr_pipe = None
+            self._kernel_process_stderr_pipe = subprocess.DEVNULL
             self.km.start_kernel(stderr=self._kernel_process_stderr_pipe, extra_arguments=extra_args)
         except Exception as e:
             error_message = f"Failed to start C++ Kernel '{kernel_name}': {e}"

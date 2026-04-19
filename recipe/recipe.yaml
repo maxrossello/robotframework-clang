@@ -1,5 +1,5 @@
 context:
-  version: "1.0.4"
+  version: "1.0.5"
   xeus_cpp_version: "0.8.1"
 
 package:
@@ -35,6 +35,8 @@ requirements:
     - ${{ compiler('clang') }}
     - ${{ compiler('clangxx') }}
     - ${{ stdlib("c") }}
+    - if: osx
+      then: libcxx-devel
 
 tests:
   - script:
@@ -48,6 +50,8 @@ tests:
         - ${{ compiler('clang') }}
         - ${{ compiler('clangxx') }}
         - ${{ stdlib("c") }}
+        - if: osx
+          then: libcxx-devel
 
 about:
   homepage: https://github.com/maxrossello/robotframework-clang

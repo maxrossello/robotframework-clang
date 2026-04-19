@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "robotframework-clang"
-version = "1.0.4"
+version = "1.0.5"
 description = "Robot Framework library for Clang-REPL execution via xeus-cpp"
 readme = "README.md"
 authors = [
@@ -41,6 +41,7 @@ platforms = ["win-64", "linux-64", "osx-64", "osx-arm64"]
 [tool.pixi.environments]
 linux = { features = [], solve-group = "default" }
 windows = { features = [], solve-group = "default" }
+osx = { features = [], solve-group = "default" }
 default = { features = [], solve-group = "default" }
 
 [tool.pixi.dependencies]
@@ -56,11 +57,18 @@ jupyter_client = "*"
 docutils = "*"
 # Build and Tooling
 rattler-build = "*"
+conda-forge-pinning = "*"
 # Documentation
 sphinx = "*"
 sphinx_rtd_theme = "*"
 myst-parser = "*"
 anaconda-client = "*"
+
+[tool.pixi.target.osx-64.dependencies]
+libcxx-devel = "*"
+
+[tool.pixi.target.osx-arm64.dependencies]
+libcxx-devel = "*"
 
 [tool.pixi.tasks]
 # Installation
@@ -73,7 +81,7 @@ docs = { cmd = "python utils/libdoc2rst.py && sphinx-build -b html docs html && 
 test = { cmd = "robot $TESTOPTS -X --extension rst --outputdir logs/$PIXI_ENVIRONMENT_NAME docs", env = { PYTHONPATH = "src" } }
 
 # Build Conda package via rattler-build (local development)
-build-recipe = "rattler-build build --recipe recipe/recipe.yaml"
+build-recipe = "rattler-build build --recipe recipe/recipe.yaml -m .pixi/envs/$PIXI_ENVIRONMENT_NAME/conda_build_config.yaml -m recipe/variants.yaml"
 
 # Build PyPI package
 build-pypi = "pip install build && python -m build"

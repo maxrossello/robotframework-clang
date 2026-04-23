@@ -1,5 +1,5 @@
 context:
-  version: "1.0.5"
+  version: "1.0.6"
   xeus_cpp_version: "0.8.1"
 
 package:
@@ -42,6 +42,8 @@ tests:
   - script:
       - jupyter kernelspec list
       - robot -X --extension rst docs/tests.rst
+      - if: win
+        then: powershell -Command "[GC]::Collect(); [GC]::WaitForPendingFinalizers()"
     files:
       source:
         - docs

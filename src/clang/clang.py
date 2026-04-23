@@ -331,14 +331,34 @@ class clang:
             raise RuntimeError(f"Failed to load linked library {lib_name}: {e}")
                      
     def _stop_kernel(self):
-        """Internal helper to stop the kernel process without clearing config."""
+        """Internal helper to stop the kernel process with polling for effective closure."""
         if self.kc:
-            try: self.kc.stop_channels()
+            try:
+                # Explicitly stop ZeroMQ channels to release socket locks
+                self.kc.stop_channels()
             except: pass
             self.kc = None
         if self.km:
             try:
-                if self.km.has_kernel: self.km.shutdown_kernel(now=True)
+                if self.km.has_kernel:
+                    self.km.shutdown_kernel(now=True)
+                
+                # Polling for effective closure
+                import time
+                timeout = 5.0
+                start_time = time.time()
+                while self.km.is_alive() and (time.time() - start_time) < timeout:
+                    time.sleep(0.1)
+                
+                # Fallback: kill if still alive
+                if self.km.is_alive():
+                    try:
+                        self.km.interrupt_kernel()
+                        time.sleep(0.2)
+                        if self.km.is_alive():
+                            self.km.shutdown_kernel(now=True)
+                    except: pass
+                
                 self.km.cleanup_resources()
             except: pass
             self.km = None

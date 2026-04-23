@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "robotframework-clang"
-version = "1.0.5"
+version = "1.0.6"
 description = "Robot Framework library for Clang-REPL execution via xeus-cpp"
 readme = "README.md"
 authors = [
@@ -82,6 +82,7 @@ test = { cmd = "robot $TESTOPTS -X --extension rst --outputdir logs/$PIXI_ENVIRO
 
 # Build Conda package via rattler-build (local development)
 build-recipe = "rattler-build build --recipe recipe/recipe.yaml -m .pixi/envs/$PIXI_ENVIRONMENT_NAME/conda_build_config.yaml -m recipe/variants.yaml"
+smoke = "pixi run -e $PIXI_ENVIRONMENT_NAME build-recipe --variant 'python=3.10.*' --variant 'is_python_min=true'"
 
 # Build PyPI package
 build-pypi = "pip install build && python -m build"

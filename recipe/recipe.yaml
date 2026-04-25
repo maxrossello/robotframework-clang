@@ -1,5 +1,5 @@
 context:
-  version: "1.0.6"
+  version: "1.0.7"
   xeus_cpp_version: "0.8.1"
 
 package:

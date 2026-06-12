@@ -17,7 +17,8 @@ We also use `OperatingSystem` to create temporary header files for testing inclu
     Library    Process
     
     Test Setup       Start Kernel
-    Test Teardown    Shutdown Kernel
+    Test Teardown    Run Keywords   Shutdown Kernel
+    ...              AND            Terminate All Processes
     
 Basic Execution
 ---------------

@@ -11,15 +11,14 @@ source:
   use_gitignore: true
 
 build:
-  number: 3
+  number: 0
   script: 
     - ${{ PYTHON }} -m pip install . --no-deps -vv
   string: "${{ target_platform | replace('-', '_') }}_py${{ python | replace('.', '') | replace('*', '') }}_h${{ hash }}"
 
 requirements:
   build:
-    - ${{ compiler('clang') }}
-    - ${{ compiler('clangxx') }}
+    - ${{ compiler('cxx') }}
     - ${{ stdlib("c") }}
   host:
     - python ${{ python }}
@@ -32,8 +31,7 @@ requirements:
     - jupyter_client
     - docutils
     - xeus-cpp ==${{ xeus_cpp_version }}
-    - ${{ compiler('clang') }}
-    - ${{ compiler('clangxx') }}
+    - ${{ compiler('cxx') }}
     - ${{ stdlib("c") }}
     - if: osx
       then: libcxx-devel
@@ -42,15 +40,12 @@ tests:
   - script:
       - jupyter kernelspec list
       - robot -X --extension rst docs/tests.rst
-      - if: win
-        then: powershell -Command "[GC]::Collect(); [GC]::WaitForPendingFinalizers()"
     files:
       source:
         - docs
     requirements:
       run:
-        - ${{ compiler('clang') }}
-        - ${{ compiler('clangxx') }}
+        - ${{ compiler('cxx') }}
         - ${{ stdlib("c") }}
         - if: osx
           then: libcxx-devel

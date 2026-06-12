@@ -337,7 +337,9 @@ class clang:
                 # Explicitly stop ZeroMQ channels to release socket locks
                 self.kc.stop_channels()
             except: pass
+            del self.kc
             self.kc = None
+
         if self.km:
             try:
                 if self.km.has_kernel:
@@ -353,15 +355,16 @@ class clang:
                 # Fallback: kill if still alive
                 if self.km.is_alive():
                     try:
-                        self.km.interrupt_kernel()
-                        time.sleep(0.2)
-                        if self.km.is_alive():
-                            self.km.shutdown_kernel(now=True)
+                        self.km.kill_kernel()
                     except: pass
                 
                 self.km.cleanup_resources()
             except: pass
+            del self.km
             self.km = None
+            
+        import gc
+        gc.collect()
 
     @keyword
     def shutdown_kernel(self):

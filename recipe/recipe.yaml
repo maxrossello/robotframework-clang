@@ -42,7 +42,7 @@ tests:
       - robot -X --extension rst docs/tests.rst
       - if: win
         then:
-          - ping 127.0.0.1 -n 25 > nul
+          - powershell -Command "Get-ChildItem -Path . -Recurse -Force | Out-Null"
     files:
       source:
         - docs

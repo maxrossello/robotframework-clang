@@ -42,7 +42,7 @@ tests:
       - robot -X --extension rst docs/tests.rst
       - if: win
         then:
-          - ping 127.0.0.1 -n 5 > nul
+          - ping 127.0.0.1 -n 25 > nul
     files:
       source:
         - docs

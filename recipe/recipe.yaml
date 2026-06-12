@@ -42,7 +42,7 @@ tests:
       - robot -X --extension rst docs/tests.rst
       - if: win
         then:
-          - powershell -Command "Get-ChildItem -Path . -Recurse -Force | Out-Null"
+          - powershell -Command "Get-ChildItem -Path . -Recurse -Force | Select-Object FullName, Attributes, @{Name='Owner';Expression={(Get-Acl $_.FullName).Owner}}, @{Name='Access';Expression={(Get-Acl $_.FullName).AccessToString}} | Format-List"
     files:
       source:
         - docs

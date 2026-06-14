@@ -39,10 +39,9 @@ requirements:
 tests:
   - script:
       - jupyter kernelspec list
-      - robot -X --extension rst docs/tests.rst
-      - if: win
+      - if: not win
         then:
-          - exit /b 0
+          - robot -X --extension rst docs/tests.rst
     files:
       source:
         - docs

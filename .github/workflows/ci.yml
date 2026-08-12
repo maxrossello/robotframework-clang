@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [ devel ]
     tags: [ 'rf-clang-*' ]
   pull_request:
     branches: [ main ]

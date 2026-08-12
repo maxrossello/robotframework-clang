@@ -1,4 +1,4 @@
 cxx_compiler:
   - clangxx
 cxx_compiler_version:
-  - 21
+  - ">=21.0"

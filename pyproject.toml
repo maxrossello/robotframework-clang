@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "robotframework-clang"
-version = "1.1.1"
+version = "1.2.0"
 description = "Robot Framework library for Clang-REPL execution via xeus-cpp"
 readme = "README.md"
 authors = [
@@ -45,11 +45,12 @@ default = { features = [] }
 python = ">=3.10,<3.14"
 pip = "*"
 setuptools = ">=61.0"
-xeus-cpp = "0.10.*"
-clang = "21.*"
-clangxx = "21.*"
+xeus-cpp = "*"
+clang = "*"
+clangxx = "*"
 # Project dependencies
 robotframework = "*"
+robotframework-pabot = "*"
 jupyter_client = "*"
 docutils = "*"
 # Build and Tooling
@@ -75,7 +76,8 @@ install = "pip install . --no-deps"
 docs = { cmd = "python utils/libdoc2rst.py && sphinx-build -b html docs html && libdoc src/clang/clang.py html/libdoc.html", depends-on = ["install"] }
 
 # Test (uses PYTHONPATH as fallback if not installed, but prefers installation)
-test = { cmd = "robot $TESTOPTS -X --extension rst --outputdir logs/$PIXI_ENVIRONMENT_NAME docs", env = { PYTHONPATH = "src" } }
+seqtest = { cmd = "robot $TESTOPTS -X --extension rst --outputdir logs/$PIXI_ENVIRONMENT_NAME docs", env = { PYTHONPATH = "src" } }
+test = { cmd = "pabot $TESTOPTS --testlevelsplit -X --extension rst --outputdir logs/$PIXI_ENVIRONMENT_NAME docs", env = { PYTHONPATH = "src" } }
 
 # Build Conda package via rattler-build (local development)
 build-recipe = "rattler-build build --recipe recipe/recipe.yaml -m .pixi/envs/$PIXI_ENVIRONMENT_NAME/conda_build_config.yaml -m recipe/variants.yaml"

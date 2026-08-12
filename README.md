@@ -37,9 +37,9 @@ Here is why:
 
 ## Requirements
 
-- Python 3.10+
-- **xeus-cpp 0.10.0**
-- **Clang 21**
+- Python 3.10..3.14
+- **xeus-cpp**
+- **Clang >=21**
 - **libcxx** (LLVM C++ standard library)
 - A working C++ kernel (e.g., `xcpp20`).
 
@@ -60,7 +60,7 @@ pixi run build-recipe
 
 ### Using Pip
 
-If you already have an environment with `xeus-cpp` and **Clang 20** installed and configured:
+If you already have an environment with `xeus-cpp` and **Clang >=21** installed and configured:
 
 ```bash
 pip install robotframework-clang

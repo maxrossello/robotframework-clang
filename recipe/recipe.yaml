@@ -13,7 +13,7 @@ build:
   number: 0
   script: 
     - ${{ PYTHON }} -m pip install . --no-deps -vv
-  string: "${{ target_platform | replace('-', '_') }}_py${{ python | replace('.', '') | replace('*', '') }}_h${{ hash }}"
+  string: "${{ target_platform | replace('-', '_') }}_py${{ python | version_to_buildstring }}_h${{ hash }}"
 
 requirements:
   build:

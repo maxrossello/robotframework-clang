@@ -181,8 +181,26 @@ class clang:
 
         try:
             self.km = KernelManager(kernel_name=kernel_name)
-            extra_args = ["-std=c++20"]
-            
+
+            extra_args = []
+                
+            # Compute the proper flags for the kernel version
+            version = kernel_name.strip() 
+            if version.startswith("xc"):
+                version = version.removeprefix("xc")
+                flags = "-std=c"
+
+                if version.startswith("pp"):
+                    version = version.removeprefix("pp")
+                    flags += "++"
+
+                
+                if "-omp" in version:
+                    version = version.removesuffix("-omp")
+                    extra_args.append("-fopenmp")
+                    
+                extra_args.insert(0, f"{flags}{version}")
+
             # Keywords need to include the common headers below, so we must inject the env
 
             # ALWAYS add user-defined paths from Keywords
@@ -229,7 +247,7 @@ class clang:
 
         self.kc = self.km.client()
         self.kc.start_channels()
-        startup_timeout = 120 if sys.platform == 'win32' else 60
+        startup_timeout = 120
 
         try: 
             self.kc.wait_for_ready(timeout=startup_timeout)

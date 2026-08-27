@@ -51,6 +51,7 @@ Installation via [Pixi](https://pixi.sh) is the preferred method as it automatic
 
 ```bash
 # To use it in your project
+pixi workspace channel add maxrossello
 pixi add robotframework-clang
 
 # Or to run tests/build within this repository

@@ -5,6 +5,7 @@ __pycache__/
 *.so
 .Python
 build/
+logs/
 develop-eggs/
 dist/
 downloads/
@@ -27,6 +28,7 @@ log.html
 report.html
 output.xml
 *.xunit
+.pabotsuitenames
 
 # Jupyter / Checkpoints
 .ipynb_checkpoints
